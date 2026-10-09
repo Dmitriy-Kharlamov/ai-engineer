@@ -51,7 +51,7 @@ class Document:
     def add_chunk(self, chunk):
         if chunk.is_too_large(self.max_chunk_tokens):
             raise ChunkTooLargeError(
-                f"Чанк слишком большой: {chunk.tokens} токенов "
+                f"Чанк чрезмерно большой: {chunk.tokens} токенов "
                 f"при лимите {self.max_chunk_tokens}"
             )
         self._chunks.append(chunk)
