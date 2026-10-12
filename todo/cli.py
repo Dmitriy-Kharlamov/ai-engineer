@@ -1,5 +1,25 @@
-from .exceptions import TodoError, UnknownCommandError, InvalidIdError
+from .exceptions import (
+    CorruptedFileError,
+    InvalidIdError,
+    TodoError,
+    UnknownCommandError,
+)
+from .storage import TaskStorage
 from .task_list import TaskList
+
+
+DATA_FILE = "tasks.json"
+
+
+def load_task_list(storage):
+    if not storage.exists():
+        print("Файл с данными не найден, начинаем с пустого списка")
+        return TaskList()
+    try:
+        return storage.load()
+    except CorruptedFileError as error:
+        print(f"Ошибка: {error}. Начинаем с пустого списка.")
+        return TaskList()
 
 
 def handle_add(task_list, argument):
@@ -28,7 +48,7 @@ def print_help():
 
 
 def format_task(task):
-    mark = "[x]" if task.is_done == True else "[ ]"
+    mark = "[x]" if task.is_done else "[ ]"
     return f"#{task.task_id:<3} {mark}  {task.text:<40} {task.created_at:%d.%m.%Y}"
 
 
@@ -70,15 +90,20 @@ def handle_stats(task_list):
 
 def run():
     print("Менеджер задач. Введите help для списка команд.")
-    task_list = TaskList()
+    storage = TaskStorage(DATA_FILE)
+    task_list = load_task_list(storage)
     while True:
-        line = input("> ").strip()
+        try:
+            line = input("> ").strip()
+        except (KeyboardInterrupt, EOFError):
+            line = "exit"
         if not line:
             print("Менеджер задач. Введите help для списка команд.")
             continue
         command, argument = parse_line(line)
         if command == "exit":
-            print("Всего доброго")
+            storage.save(task_list)
+            print("Сохранено. До встречи.")
             break
         try:
             if command == "help":
