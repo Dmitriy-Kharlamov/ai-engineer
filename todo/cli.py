@@ -27,6 +27,26 @@ def print_help():
     print("exit — сохранить и выйти")
 
 
+def format_task(task):
+    mark = "[x]" if task.is_done == True else "[ ]"
+    return f"#{task.task_id:<3} {mark}  {task.text:<40} {task.created_at:%d.%m.%Y}"
+
+
+def handle_list(task_list, argument):
+    if argument == "":
+        tasks = task_list.filter()
+    elif argument == "done":
+        tasks = task_list.filter(True)
+    elif argument == "todo":
+        tasks = task_list.filter(False)
+    else:
+        raise UnknownCommandError(f"list {argument}")
+    if not tasks:
+        print("Список пуст")
+    for task in tasks:
+        print(format_task(task))
+
+
 def run():
     print("Менеджер задач. Введите help для списка команд.")
     task_list = TaskList()
@@ -44,6 +64,8 @@ def run():
                 print_help()
             elif command == "add":
                 handle_add(task_list, argument)
+            elif command == "list":
+                handle_list(task_list, argument)
             else:
                 raise UnknownCommandError(command)
         except TodoError as error:
