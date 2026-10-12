@@ -1,4 +1,4 @@
-from .exceptions import TodoError, UnknownCommandError
+from .exceptions import TodoError, UnknownCommandError, InvalidIdError
 from .task_list import TaskList
 
 
@@ -47,6 +47,27 @@ def handle_list(task_list, argument):
         print(format_task(task))
 
 
+def parse_id(argument):
+    if not argument.isdigit():
+        raise InvalidIdError(argument)
+    return int(argument)
+
+
+def handle_done(task_list, argument):
+    task = task_list.complete(parse_id(argument))
+    print(f"Задача #{task.task_id} выполнена")
+
+
+def handle_delete(task_list, argument):
+    task = task_list.delete(parse_id(argument))
+    print(f"Задача #{task.task_id} удалена")
+
+
+def handle_stats(task_list):
+    total, done, percent = task_list.stats()
+    print(f"Всего: {total}, выполнено: {done} ({percent}%)")
+
+
 def run():
     print("Менеджер задач. Введите help для списка команд.")
     task_list = TaskList()
@@ -66,6 +87,12 @@ def run():
                 handle_add(task_list, argument)
             elif command == "list":
                 handle_list(task_list, argument)
+            elif command == "done":
+                handle_done(task_list, argument)
+            elif command == "delete":
+                handle_delete(task_list, argument)
+            elif command == "stats":
+                handle_stats(task_list)
             else:
                 raise UnknownCommandError(command)
         except TodoError as error:
