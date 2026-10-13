@@ -14,7 +14,7 @@ class TaskNotFoundError(TodoError):
 
 class InvalidIdError(TodoError):
     def __init__(self, raw_id):
-        super().__init__(f"введенное значение не является числом {raw_id} не является числом")
+        super().__init__(f"идентификатор {raw_id!r} не является числом")
 
 
 class EmptyTextError(TodoError):
