@@ -1,5 +1,6 @@
 import time
 from collections import deque
+from ragkit import Chunk
 
 
 def measure(func, *args):
@@ -83,7 +84,7 @@ def halve_until_one(n):
 # Со списком O(n·m): для каждого из n слов "in" перебирает до m стоп-слов.
 # С множеством O(n): каждая проверка "in" стоит O(1).
 # Разница порядка m = 5 000; вышло около тысячи, потому что поиск в списке часто
-# останавливается раньше конца, а проверка в множестве тоже не бесплатна (вычисляется хеш).  
+# останавливается раньше конца, а проверка в множестве тоже не бесплатна (вычисляется хеш).
 def remove_stop_words(words, stop_words):
     return [w for w in words if w not in stop_words]
 
@@ -100,6 +101,35 @@ def process_with_list(queue):
 def process_with_deque(queue):
     while queue:
         queue.popleft()
+
+
+# Задача 6: в старой dedupe_chunks O(n²) пряталась в строке с if:
+# на каждом из n шагов [c.text for c in unique] заново строит список из всех текстов в unique — это O(k),
+# и потом "in" перебирает этот список ещё раз — снова O(k). k растёт до n, поэтому всего O(n²).
+# В новой версии тексты хранятся в множестве, "in" стоит O(1), вся функция — O(n).
+def dedupe_chunks(chunks):
+    unique = []
+    for chunk in chunks:
+        if chunk.text not in [c.text for c in unique]:
+            unique.append(chunk)
+    return unique
+
+
+def dedupe_chunks_fast(chunks):
+    seen_texts = set()
+    unique = []
+    for chunk in chunks:
+        if chunk.text not in seen_texts:
+            seen_texts.add(chunk.text)
+            unique.append(chunk)
+    return unique
+
+
+# Задача 7: n вырос в 50 раз (1 000 → 50 000). Сложность O(n²), значит время растёт в 50² = 2 500 раз.
+# 2 с × 2 500 = 5 000 с ≈ 83 минуты.
+# Для O(n log n): n вырос в 50 раз, log₂ n — с 10 до 15,6, то есть в 1,56 раза.
+# Рост времени 50 × 1,56 ≈ 78 раз, 2 с × 78 ≈ 156 с ≈ 2,6 минуты.
+# Вывод: на 1 000 элементах обе версии работают по 2 с, а на 50 000 разница уже в 32 раза (83 мин против 2,6 мин).
 
 
 if __name__ == "__main__":
@@ -128,3 +158,7 @@ if __name__ == "__main__":
     deque_time = measure(process_with_deque, queue_deque)
     print(f"list.pop(0): {list_queue_time:.4f} с, deque.popleft(): {deque_time:.4f} с")
     print(f"deque быстрее в {list_queue_time / deque_time:.0f} раз")
+
+    chunks = [Chunk("привет", "a.pdf"), Chunk("мир", "b.pdf"), Chunk("привет", "c.pdf")]
+    print(dedupe_chunks(chunks))
+    print(dedupe_chunks_fast(chunks))
