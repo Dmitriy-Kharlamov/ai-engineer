@@ -97,8 +97,43 @@ def check_remove_duplicates(trials=500):
     print(f"remove_duplicates: {trials} проверок пройдено")
 
 
+# 5. Деление ломается из-за нулей:
+#    один ноль — total = 0, на месте нуля получается 0 / 0 → ZeroDivisionError,
+#    а правильный ответ там — произведение остальных (для [1, 2, 0, 4] это 8).
+#    Два нуля — total = 0, ответ везде 0 верный, но на местах нулей
+#    всё равно делим 0 на 0 → ZeroDivisionError. Информация о ненулевых числах
+#    теряется в total, и делением её не восстановить.
+def product_except_self(numbers):
+    n = len(numbers)
+    result = [1] * n
+    left = 1
+    for i in range(n):              # проход слева направо
+        result[i] = left             # произведение всех левее i
+        left *= numbers[i]
+    right = 1
+    for i in range(n - 1, -1, -1):  # проход справа налево
+        result[i] *= right             # домножаем на произведение всех правее i
+        right *= numbers[i]
+    return result
+
+
+def product_except_self_reference(numbers):
+    result = []
+    for i in range(len(numbers)):
+        product = 1
+        for j in range(len(numbers)):
+            if j != i:
+                product *= numbers[j]
+        result.append(product)
+    return result
+
+
 if __name__ == "__main__":
     check(max_and_min, max_and_min_reference)
     check_range_sum()
     check(move_zeroes, move_zeroes_reference, low=-2, high=2)
     check_remove_duplicates()
+    check(product_except_self, product_except_self_reference, low=-3, high=3, max_size=10)
+    assert product_except_self([1, 2, 0, 4]) == [0, 0, 8, 0]
+    assert product_except_self([0, 2, 0, 4]) == [0, 0, 0, 0]
+    print("product_except_self: проверки с нулями пройдены")
