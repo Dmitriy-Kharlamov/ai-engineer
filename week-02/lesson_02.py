@@ -128,6 +128,45 @@ def product_except_self_reference(numbers):
     return result
 
 
+# 6. -0 в Python равно 0, поэтому items[-0:] — это items[0:], то есть весь список,
+#    а items[:-0] — это items[:0], то есть пустой список.
+def rotate_reference(items, k):
+    n = len(items)
+    if n == 0:
+        return items
+    k = k % n
+    return items[-k:] + items[:-k]
+
+
+def reverse_part(items, lo, hi):
+    while lo < hi:
+        items[lo], items[hi] = items[hi], items[lo]
+        lo += 1
+        hi -= 1
+
+
+def rotate(items, k):
+    n = len(items)
+    if n == 0:
+        return items
+    k = k % n
+    reverse_part(items, 0, n - 1)
+    reverse_part(items, 0, k - 1)
+    reverse_part(items, k, n - 1)
+    return items
+
+
+def check_rotate(trials=500):
+    for _ in range(trials):
+        size = random.randint(0, 30)
+        items = [random.randint(-50, 50) for _ in range(size)]
+        for k in range(2 * size + 1):
+            expected = rotate_reference(items[:], k)
+            actual = rotate(items[:], k)
+            assert actual == expected, f"вход {items}, k={k}: получил {actual}, ждал {expected}"
+    print(f"rotate: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check(max_and_min, max_and_min_reference)
     check_range_sum()
@@ -137,3 +176,4 @@ if __name__ == "__main__":
     assert product_except_self([1, 2, 0, 4]) == [0, 0, 8, 0]
     assert product_except_self([0, 2, 0, 4]) == [0, 0, 0, 0]
     print("product_except_self: проверки с нулями пройдены")
+    check_rotate()
