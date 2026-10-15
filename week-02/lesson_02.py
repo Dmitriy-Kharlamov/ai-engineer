@@ -191,6 +191,38 @@ def max_subarray_reference(numbers):
     return max(sum(numbers[i:j]) for i in range(n) for j in range(i + 1, n + 1))
 
 
+# 8. Надёжнее XOR. Сумма n * (n + 1) // 2 растёт как n в квадрате: при n = 100 000 это уже ≈ 5 000 000 000,
+#    больше максимума 32-битного int (≈ 2,1 млрд), и в C/Java произойдёт переполнение —
+#    ответ получится неправильным. XOR не складывает числа, а работает с битами,
+#    поэтому результат всегда меньше 2n и переполниться не может.
+#    В Python целые числа не переполняются, но сумма всё равно создаёт огромные
+#    промежуточные числа, а XOR — нет.
+def find_missing_sum(numbers):
+    n = len(numbers)
+    return n * (n + 1) // 2 - sum(numbers)
+
+
+def find_missing_xor(numbers):
+    n = len(numbers)
+    result = 0
+    for i in range(n + 1):
+        result ^= i
+    for x in numbers:
+        result ^= x
+    return result
+
+
+def check_find_missing(trials=500):
+    for _ in range(trials):
+        n = random.randint(0, 30)
+        missing = random.randint(0, n)
+        numbers = [x for x in range(n + 1) if x != missing]
+        random.shuffle(numbers)
+        assert find_missing_sum(numbers) == missing, f"sum: вход {numbers}"
+        assert find_missing_xor(numbers) == missing, f"xor: вход {numbers}"
+    print(f"find_missing: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check(max_and_min, max_and_min_reference)
     check_range_sum()
@@ -202,3 +234,4 @@ if __name__ == "__main__":
     print("product_except_self: проверки с нулями пройдены")
     check_rotate()
     check(max_subarray, max_subarray_reference)
+    check_find_missing()
