@@ -167,6 +167,30 @@ def check_rotate(trials=500):
     print(f"rotate: {trials} проверок пройдено")
 
 
+# 7. Если все числа отрицательные, функция вернёт отрицательное — самое большое число списка
+# (для [-3, -1, -2] это -1, отрезок [-1] из одного элемента).
+# Почему так: любой отрезок длиннее одного элемента складывает отрицательные
+# числа, и сумма от этого только уменьшается. Значит, лучший отрезок — один элемент.
+# Это правильно для «непустого» подмассива: пустой отрезок дал бы сумму 0,
+# и она была бы больше любого отрицательного числа, но условие запрещает
+# брать пустой отрезок, поэтому 0 вернуть нельзя.
+def max_subarray(numbers):
+    if not numbers:
+        return None
+    current = best = numbers[0]
+    for x in numbers[1:]:
+        current = max(current + x, x)
+        best = max(best, current)
+    return best
+
+
+def max_subarray_reference(numbers):
+    if not numbers:
+        return None
+    n = len(numbers)
+    return max(sum(numbers[i:j]) for i in range(n) for j in range(i + 1, n + 1))
+
+
 if __name__ == "__main__":
     check(max_and_min, max_and_min_reference)
     check_range_sum()
@@ -177,3 +201,4 @@ if __name__ == "__main__":
     assert product_except_self([0, 2, 0, 4]) == [0, 0, 0, 0]
     print("product_except_self: проверки с нулями пройдены")
     check_rotate()
+    check(max_subarray, max_subarray_reference)
