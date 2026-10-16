@@ -52,8 +52,41 @@ def word_frequency(text, normalize=True):
     return freq
 
 
-# 3
+# 3. Ключ — tuple(sorted(word)).
+#    Почему одинаковый у анаграмм: анаграммы состоят из одинаковых букв в любом порядке,
+#    а сортировка убирает различие в порядке — «кот» и «ток» оба дают ('к', 'о', 'т').
+#    Почему хешируемый: sorted возвращает список, а он изменяемый и не может быть
+#    ключом словаря; tuple — неизменяемый, поэтому у него есть хеш.
+#    Детерминированность: порядок групп в словаре зависит от порядка слов на входе,
+#    поэтому сортируем слова внутри групп и сами группы — тогда результат можно
+#    сравнить с эталоном через ==.
+def group_anagrams(words):
+    groups = {}
+    for word in words:
+        key = tuple(sorted(word))
+        groups.setdefault(key, []).append(word)
+    # детерминированный порядок: слова внутри группы и сами группы — отсортированы
+    return sorted(sorted(group) for group in groups.values())
 
+
+def group_anagrams_reference(words):
+    groups = []
+    for word in words:
+        for group in groups:
+            if Counter(group[0]) == Counter(word):
+                group.append(word)
+                break
+        else:
+            groups.append([word])
+    return sorted(sorted(group) for group in groups)
+
+
+def check_group_anagrams(trials=500):
+    for _ in range(trials):
+        words = ["".join(random.choice("абв") for _ in range(random.randint(1, 3)))
+                 for _ in range(random.randint(0, 10))]
+        assert group_anagrams(words) == group_anagrams_reference(words), f"вход {words}"
+    print(f"group_anagrams: {trials} проверок пройдено")
 
 
 if __name__ == "__main__":
@@ -83,3 +116,5 @@ if __name__ == "__main__":
     for key, variants in groups.items():
         if len(variants) > 1:
             print(key, "←", variants)
+    check_group_anagrams()
+    print(group_anagrams(["кот", "ток", "окт", "дом", "мод", "сон"]))
