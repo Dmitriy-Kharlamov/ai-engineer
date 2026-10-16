@@ -126,6 +126,7 @@ DOCS = {
     4: "Обратный индекс ускоряет поиск документов",
     5: "Быстрый поиск — основа RAG",
     6: "Данные хранятся в словарях",
+    7: "Поиск, поиск и ещё раз поиск: RAG без поиска не работает",
 }
 
 
@@ -172,6 +173,23 @@ def check_search(index, docs, trials=10):
     print(f"search vs naive_search: {trials} случайных запросов совпали")
 
 
+# 6. TF = число вхождений терма / общее число термов документа.
+#    Абсолютное число зависит от размера документа: в длинном тексте любое слово
+#    встречается чаще просто потому, что слов больше. Например, «python» 2 раза
+#    в документе из 10 слов (TF = 0.2) значит больше, чем 5 раз в документе
+#    из 1000 слов (TF = 0.05), хотя абсолютное число у второго больше.
+#    Доля убирает влияние длины и делает документы сравнимыми.
+def term_frequency(text):
+    terms = tokenize(text)
+    if not terms:
+        return {}
+    counts = {}
+    for term in terms:
+        counts[term] = counts.get(term, 0) + 1
+    total = len(terms)
+    return {term: count / total for term, count in counts.items()}
+
+
 if __name__ == "__main__":
     check_char_frequency()
     text = "bbaacd"
@@ -211,3 +229,10 @@ if __name__ == "__main__":
     assert search("", index) == set()
     print("search: проверки на 4 запросах пройдены")
     check_search(index, DOCS)
+    for doc_id, text in DOCS.items():
+        tf = term_frequency(text)
+        assert abs(sum(tf.values()) - 1) < 1e-9, f"документ {doc_id}"
+        top3 = sorted(tf.items(), key=lambda item: (-item[1], item[0]))[:3]
+        print(doc_id, top3)
+    assert term_frequency("") == {}
+    print("term_frequency: проверки пройдены")
