@@ -118,6 +118,60 @@ def check_first_unique(trials=500):
     print(f"first_unique: {trials} проверок пройдено")
 
 
+# 5
+DOCS = {
+    1: "Python — язык для анализа данных",
+    2: "Словари в Python работают быстро",
+    3: "RAG ищет документы по запросу",
+    4: "Обратный индекс ускоряет поиск документов",
+    5: "Быстрый поиск — основа RAG",
+    6: "Данные хранятся в словарях",
+}
+
+
+def tokenize(text):
+    words = [w.lower().strip(PUNCT) for w in text.split()]
+    return [w for w in words if w]           # выкидываем пустые (от «—»)
+
+
+def build_index(docs):
+    index = {}
+    for doc_id, text in docs.items():
+        for term in tokenize(text):
+            index.setdefault(term, set()).add(doc_id)
+    return index
+
+
+def search(query, index):
+    terms = tokenize(query)
+    if not terms:
+        return set()
+    result = index.get(terms[0], set()).copy()
+    for term in terms[1:]:
+        result &= index.get(term, set())
+    return result
+
+
+def naive_search(query, docs):
+    terms = set(tokenize(query))
+    if not terms:
+        return set()
+    result = set()
+    for doc_id, text in docs.items():
+        doc_terms = set(tokenize(text))
+        if terms <= doc_terms:
+            result.add(doc_id)
+    return result
+
+
+def check_search(index, docs, trials=10):
+    vocabulary = list(index) + ["java", "космос"]
+    for _ in range(trials):
+        query = " ".join(random.sample(vocabulary, random.randint(0, 3)))
+        assert search(query, index) == naive_search(query, docs), f"запрос {query!r}"
+    print(f"search vs naive_search: {trials} случайных запросов совпали")
+
+
 if __name__ == "__main__":
     check_char_frequency()
     text = "bbaacd"
@@ -150,3 +204,10 @@ if __name__ == "__main__":
     check_first_unique()
     print(first_unique("абракадабра"))
     print(first_unique("aabb"))
+    index = build_index(DOCS)
+    assert search("python", index) == {1, 2}
+    assert search("быстро python", index) == {2}
+    assert search("java", index) == set()
+    assert search("", index) == set()
+    print("search: проверки на 4 запросах пройдены")
+    check_search(index, DOCS)
