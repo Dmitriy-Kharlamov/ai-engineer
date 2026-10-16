@@ -226,6 +226,54 @@ def show_hashability():
     print("Chunk.__hash__ =", Chunk.__hash__)
 
 
+# 8. Ловушки словарей
+def show_dict_traps():
+    from collections import defaultdict
+
+    # а) удаление ключей во время цикла по словарю
+    d = {"a": 1, "b": 2, "c": 3}
+    try:
+        for key in d:
+            if d[key] % 2 == 1:
+                del d[key]
+    except RuntimeError as e:
+        print("а) ошибка:", e)
+    d = {"a": 1, "b": 2, "c": 3}
+    for key in list(d):
+        if d[key] % 2 == 1:
+            del d[key]
+    print("а) через list(d):", d)
+    #   Механизм: словарь запрещает менять размер во время цикла по нему — итератор
+    #   теряет позицию, поэтому RuntimeError. list(d) заранее делает список ключей,
+    #   цикл идёт по нему, а удаляем из самого словаря.
+
+    # б) d.keys() — живое представление
+    d = {"a": 1}
+    keys = d.keys()
+    print("б) до:", keys)
+    d["b"] = 2
+    print("б) после добавления:", keys)
+    # Механизм: d.keys() — не копия, а ссылка на сам словарь: изменения в d
+    #   сразу видны в keys. Нужна копия на момент — list(d.keys()).
+
+    # в) defaultdict создаёт ключ при простом обращении
+    dd = defaultdict(int)
+    print("в) 'x' в dd до:", "x" in dd)
+    if dd["x"] == 0:
+        pass
+    print("в) 'x' в dd после dd['x']:", "x" in dd, "→", dict(dd))
+    # Механизм: defaultdict при обращении к отсутствующему ключу вызывает int(),
+    #   получает 0 и записывает его в словарь. Даже простое чтение dd["x"] создаёт ключ.
+    #   Проверять наличие надо через "x" in dd, а не через dd["x"].
+
+    # г) Counter не создаёт ключ
+    cnt = Counter()
+    print("г) cnt['x'] =", cnt["x"])
+    print("г) 'x' в cnt после:", "x" in cnt, "→", dict(cnt))
+    # Механизм: Counter для отсутствующего ключа равен 0, но не кладет ключ в словарь,
+    #   поэтому чтение не меняет счётчик.
+
+
 if __name__ == "__main__":
     check_char_frequency()
     text = "bbaacd"
@@ -283,3 +331,4 @@ if __name__ == "__main__":
     print("уникальных в {a, b, c}:", len({a, b, c}))
     assert hash(a) == hash(b) == hash(c)
     assert len({a, b, c}) == 1
+    show_dict_traps()
