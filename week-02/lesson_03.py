@@ -1,6 +1,7 @@
 import random
 import string
 from collections import Counter
+from ragkit import Chunk
 
 PUNCT = string.punctuation + "«»—…"     # string.punctuation знает только английские знаки
 
@@ -190,6 +191,41 @@ def term_frequency(text):
     return {term: count / total for term, count in counts.items()}
 
 
+# 7. Хешируемость.
+#    список — TypeError: список изменяемый, его содержимое можно поменять после того, как
+#      он стал ключом; хеш бы изменился, и словарь не нашёл бы ключ. Поэтому
+#      у list нет __hash__.
+#    кортеж (1, 2) — OK: кортеж неизменяемый, и все его элементы хешируемые, поэтому
+#      хеш считается из хешей элементов.
+#    кортеж со списком — TypeError: хеш кортежа считается из хешей его элементов,
+#      а у списка внутри хеша нет. Неизменяемости самого контейнера мало —
+#      хешируемым должно быть и содержимое.
+#    Chunk — TypeError, Chunk.__hash__ = None: в классе определён свой __eq__
+#      (сравнивает по числу токенов), а __hash__ нет. В таком случае Python сам
+#      ставит __hash__ = None.
+#      Иначе остался бы хеш по умолчанию (по id объекта): два равных чанка
+#      имели бы разные хеши, и словарь считал бы их разными ключами.
+#    Исправление: добавил __hash__ = hash(self.tokens), согласованный с __eq__
+#      (тот сравнивает по числу токенов). Теперь чанки работают как ключи.
+#      Следствие: чанки с разным текстом, но одинаковым числом слов — один ключ
+#      ({a, b, c} даёт 1 элемент). Если нужна дедупликация по содержимому,
+#      __eq__ и __hash__ надо перевести на (text, source).
+def try_as_key(label, make_key):
+    try:
+        d = {make_key(): "значение"}
+        print(f"{label}: OK, ключ принят → {d}")
+    except TypeError as e:
+        print(f"{label}: TypeError — {e}")
+
+
+def show_hashability():
+    try_as_key("список", lambda: [1, 2])
+    try_as_key("кортеж", lambda: (1, 2))
+    try_as_key("кортеж со списком", lambda: (1, [2]))
+    try_as_key("Chunk", lambda: Chunk("текст", "a.pdf"))
+    print("Chunk.__hash__ =", Chunk.__hash__)
+
+
 if __name__ == "__main__":
     check_char_frequency()
     text = "bbaacd"
@@ -236,3 +272,14 @@ if __name__ == "__main__":
         print(doc_id, top3)
     assert term_frequency("") == {}
     print("term_frequency: проверки пройдены")
+    show_hashability()
+    print("разные тексты, равны?", Chunk("привет мир", "a.pdf") == Chunk("пока всем", "b.pdf"))
+    a = Chunk("привет мир", "a.pdf")
+    b = Chunk("привет мир", "a.pdf")            # другой объект, тот же текст
+    c = Chunk("пока всем", "b.pdf")             # другой текст, но тоже 2 слова
+    d = {a: "первый"}
+    print("d[b] =", d[b])                        # нашли по равному объекту
+    print("d[c] =", d[c])                        # тоже нашли: для словаря c == a
+    print("уникальных в {a, b, c}:", len({a, b, c}))
+    assert hash(a) == hash(b) == hash(c)
+    assert len({a, b, c}) == 1
