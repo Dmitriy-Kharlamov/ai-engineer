@@ -89,6 +89,35 @@ def check_group_anagrams(trials=500):
     print(f"group_anagrams: {trials} проверок пройдено")
 
 
+# 4. Одним проходом нельзя: в момент, когда мы видим символ, неизвестно,
+#    встретится ли он еще раз (в "абракадабра" «б» на позиции 1 кажется уникальной,
+#    но повторяется на позиции 8). Чтобы это знать, нужно сначала увидеть количество повторений каждого символа —
+#    это первый проход (подсчёт). Второй проход идёт заново, чтобы найти
+#    именно первый символ со счётом 1.
+def first_unique(text):
+    counts = {}
+    for ch in text:
+        counts[ch] = counts.get(ch, 0) + 1
+    for ch in text:
+        if counts[ch] == 1:
+            return ch
+    return None
+
+
+def first_unique_reference(text):
+    for ch in text:
+        if text.count(ch) == 1:
+            return ch
+    return None
+
+
+def check_first_unique(trials=500):
+    for _ in range(trials):
+        text = "".join(random.choice("абвг") for _ in range(random.randint(0, 10)))
+        assert first_unique(text) == first_unique_reference(text), f"вход {text!r}"
+    print(f"first_unique: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check_char_frequency()
     text = "bbaacd"
@@ -118,3 +147,6 @@ if __name__ == "__main__":
             print(key, "←", variants)
     check_group_anagrams()
     print(group_anagrams(["кот", "ток", "окт", "дом", "мод", "сон"]))
+    check_first_unique()
+    print(first_unique("абракадабра"))
+    print(first_unique("aabb"))
