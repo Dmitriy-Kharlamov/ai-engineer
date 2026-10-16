@@ -28,6 +28,12 @@ class Chunk:
         if not isinstance(other, Chunk):
             return NotImplemented
         return self.tokens == other.tokens
+
+    def __hash__(self):
+        # Согласован с __eq__: __eq__ сравнивает по числу токенов,
+        # поэтому и хеш считаем по числу токенов — равные чанки дают равный хеш.
+        # Следствие: все чанки с одинаковым числом слов для словаря — один ключ.
+        return hash(self.tokens)
     
     def __repr__(self):
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"
