@@ -156,6 +156,49 @@ def group_by_length_groupby_sorted(words):
     return [(key, list(group)) for key, group in groupby(ordered, key=len)]
 
 
+# 5. Контрпример для одного словаря: то и аа. forward проверяет только, что каждая
+#    буква первой строки всегда переходит в одну и ту же букву второй, но не
+#    запрещает двум разным буквам перейти в одну букву: {т→а, о→а} он принимает.
+#    Второй словарь backward проверяет обратное направление и ловит это.
+def is_isomorphic(a, b):
+    if len(a) != len(b):
+        return False
+    forward, backward = {}, {}
+    for x, y in zip(a, b):
+        if forward.setdefault(x, y) != y:
+            return False
+        if backward.setdefault(y, x) != x:
+            return False
+    return True
+
+
+def pattern(s):
+    first = {}
+    return [first.setdefault(ch, len(first)) for ch in s]
+
+
+def is_isomorphic_reference(a, b):
+    return pattern(a) == pattern(b)
+
+
+def is_isomorphic_one_dict(a, b):
+    if len(a) != len(b):
+        return False
+    forward = {}
+    for x, y in zip(a, b):
+        if forward.setdefault(x, y) != y:
+            return False
+    return True
+
+
+def check_isomorphic(trials=500):
+    for _ in range(trials):
+        a = "".join(random.choice("аб") for _ in range(random.randint(0, 4)))
+        b = "".join(random.choice("вг") for _ in range(random.randint(0, 4)))
+        assert is_isomorphic(a, b) == is_isomorphic_reference(a, b), f"{a!r}, {b!r}"
+    print(f"is_isomorphic: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
@@ -169,3 +212,6 @@ if __name__ == "__main__":
     print("groupby без sort:", group_by_length_groupby(WORDS))
     print("groupby с sort:  ", group_by_length_groupby_sorted(WORDS))
     assert group_by_length(WORDS) == dict(group_by_length_groupby_sorted(WORDS))
+    a, b = "то", "аа"
+    print("один словарь:", is_isomorphic_one_dict(a, b), "| правильно:", is_isomorphic(a, b))
+    check_isomorphic()
