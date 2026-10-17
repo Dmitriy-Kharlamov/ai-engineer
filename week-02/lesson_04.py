@@ -215,6 +215,40 @@ def common_words_set(text_a, text_b):
     return set(text_a.lower().split()) & set(text_b.lower().split())
 
 
+# 7. dict.fromkeys сохраняет порядок, потому что словарь хранит ключи в порядке
+#    вставки: записи лежат в отдельном массиве подряд, а хеш-таблица хранит только
+#    номера этих записей. Повторный ключ не добавляется, поэтому остаётся
+#    первое появление. Гарантия языка — с Python 3.7 (в CPython 3.6 так было
+#    уже, но как деталь реализации, на которую нельзя было опираться).
+#    set порядка не хранит: положение элемента зависит от хэша элемента, а хеш строк
+#    рандомизируется при каждом запуске — поэтому dedupe_set может выдавать
+#    разный порядок от запуска к запуску.
+def dedupe(items):
+    return list(dict.fromkeys(items))
+
+
+def dedupe_set(items):
+    return list(set(items))
+
+
+def dedupe_reference(items):
+    seen = set()
+    result = []
+    for item in items:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
+
+
+def check_dedupe(trials=500):
+    for _ in range(trials):
+        items = [random.choice("абвгд") for _ in range(random.randint(0, 10))]
+        assert dedupe(items) == dedupe_reference(items), f"вход {items}"           # порядок тот же
+        assert set(dedupe_set(items)) == set(dedupe(items)), f"вход {items}"      # элементы те же
+    print(f"dedupe: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
@@ -237,3 +271,7 @@ if __name__ == "__main__":
     print("set &:    ", common_words_set(text_a, text_b))
     assert common_words(text_a, text_b) == Counter({"кот": 2, "пёс": 1})
     assert common_words_set(text_a, text_b) == {"кот", "пёс"}
+    fruits = ["банан", "яблоко", "вишня", "яблоко", "банан", "груша"]
+    print("dedupe:    ", dedupe(fruits))
+    print("dedupe_set:", dedupe_set(fruits))
+    check_dedupe()
