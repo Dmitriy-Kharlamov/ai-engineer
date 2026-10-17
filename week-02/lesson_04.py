@@ -1,4 +1,5 @@
 import random
+from collections import Counter
 
 
 def two_sum(numbers, target):
@@ -48,7 +49,44 @@ def check_two_sum(trials=500):
     print(f"two_sum: {trials} проверок пройдено")
 
 
+# 2. Определение: число уникальных пар значений (a, a + k).
+#    k < 0 → 0, разница по определению неотрицательная;
+#    k = 0 → число значений, встречающихся хотя бы дважды;
+#    дубликаты на входе не размножают пары.
+def count_pairs_with_diff(numbers, k):
+    if k < 0:
+        return 0
+    counts = Counter(numbers)
+    if k == 0:
+        return sum(1 for c in counts.values() if c >= 2)
+    return sum(1 for v in counts if v + k in counts)
+
+
+def count_pairs_with_diff_reference(numbers, k):
+    if k < 0:
+        return 0
+    pairs = set()
+    for i in range(len(numbers)):
+        for j in range(len(numbers)):
+            if i != j and numbers[j] - numbers[i] == k:
+                pairs.add((numbers[i], numbers[j]))
+    return len(pairs)
+
+
+def check_count_pairs(trials=500):
+    assert count_pairs_with_diff([1, 1, 3], 2) == 1          # дубликаты
+    assert count_pairs_with_diff([1, 1, 2, 2, 3], 0) == 2    # k = 0: (1,1) и (2,2)
+    assert count_pairs_with_diff([1, 3], -2) == 0            # k < 0
+    for _ in range(trials):
+        numbers = [random.randint(-5, 5) for _ in range(random.randint(0, 10))]
+        k = random.randint(-3, 3)
+        assert count_pairs_with_diff(numbers, k) == count_pairs_with_diff_reference(numbers, k), \
+            f"вход {numbers}, k={k}"
+    print(f"count_pairs_with_diff: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
     print("сломанная: ", two_sum_broken([4, 1], 8))
+    check_count_pairs()
