@@ -1,5 +1,7 @@
 import random
+import time
 from collections import Counter, defaultdict
+from functools import lru_cache
 from itertools import groupby
 
 
@@ -249,6 +251,44 @@ def check_dedupe(trials=500):
     print(f"dedupe: {trials} проверок пройдено")
 
 
+# 8. Замеры n = 32, минимум из 7 прогонов: naive 0.1 с, memo 0.000002 с, lru 0.000002 с.
+#    Наивная версия пересчитывает одни и те же значения заново: fib(30) вызывается
+#    2 раза, fib(29) — 3 раза, fib(28) — 5 раз… — число вызовов растёт как
+#    сами числа Фибоначчи, экспоненциально (около 7 млн вызовов для n = 32).
+#    С кешем каждое fib(k) считается один раз, дальше берётся из словаря — O(n).
+#    lru_cache со списком: TypeError — unhashable type: 'list'. Ключ кеша собирается из аргументов,
+#    а ключ словаря обязан быть хешируемым; список изменяемый и хеша не имеет
+#    (задача 7 урока 3).
+def fib_naive(n):
+    return n if n < 2 else fib_naive(n - 1) + fib_naive(n - 2)
+
+
+def fib_memo(n, cache=None):
+    if cache is None:
+        cache = {}
+    if n in cache:
+        return cache[n]
+    result = n if n < 2 else fib_memo(n - 1, cache) + fib_memo(n - 2, cache)
+    cache[n] = result
+    return result
+
+
+@lru_cache(maxsize=None)
+def fib_lru(n):
+    return n if n < 2 else fib_lru(n - 1) + fib_lru(n - 2)
+
+
+def best_of(func, n, runs=7, reset=None):
+    times = []
+    for _ in range(runs):
+        if reset:
+            reset()
+        start = time.perf_counter()
+        func(n)
+        times.append(time.perf_counter() - start)
+    return min(times)
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
@@ -275,3 +315,17 @@ if __name__ == "__main__":
     print("dedupe:    ", dedupe(fruits))
     print("dedupe_set:", dedupe_set(fruits))
     check_dedupe()
+    for n in range(20):
+        assert fib_naive(n) == fib_memo(n) == fib_lru(n)
+    print(f"fib_naive(32): {best_of(fib_naive, 32):.4f} с")
+    print(f"fib_memo(32):  {best_of(fib_memo, 32):.6f} с")
+    print(f"fib_lru(32):   {best_of(fib_lru, 32, reset=fib_lru.cache_clear):.6f} с")
+
+    @lru_cache(maxsize=None)
+    def total(items):
+        return sum(items)
+
+    try:
+        total([1, 2, 3])
+    except TypeError as e:
+        print("lru_cache со списком:", e)
