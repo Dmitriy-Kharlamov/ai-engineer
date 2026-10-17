@@ -1,5 +1,6 @@
 import random
-from collections import Counter
+from collections import Counter, defaultdict
+from itertools import groupby
 
 
 def two_sum(numbers, target):
@@ -130,6 +131,31 @@ def check_subarrays(trials=500):
     print(f"count_subarrays_with_sum: {trials} проверок пройдено")
 
 
+# 4. groupby группирует только подряд идущие элементы с одинаковым ключом:
+#    он режет последовательность на участки и начинает новую группу каждый раз,
+#    когда ключ меняется. В WORDS длины идут 3, 4, 3, 4, 3, 5, 3 — поэтому ключ 3
+#    встречается 4 раза отдельными группами. После сортировки по len
+#    одинаковые длины стоят рядом, и groupby даёт настоящие группы (O(n log n)).
+#    defaultdict собирает группы по всему списку за один проход, O(n), без сортировки.
+WORDS = ["кот", "слон", "дом", "мышь", "ток", "жираф", "лев"]
+
+
+def group_by_length(words):
+    groups = defaultdict(list)
+    for word in words:
+        groups[len(word)].append(word)
+    return dict(groups)
+
+
+def group_by_length_groupby(words):
+    return [(key, list(group)) for key, group in groupby(words, key=len)]
+
+
+def group_by_length_groupby_sorted(words):
+    ordered = sorted(words, key=len)
+    return [(key, list(group)) for key, group in groupby(ordered, key=len)]
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
@@ -139,3 +165,7 @@ if __name__ == "__main__":
         print(numbers, k, "→ правильная:", count_subarrays_with_sum(numbers, k),
             "| сломанная:", count_subarrays_broken(numbers, k))
     check_subarrays()
+    print("defaultdict:     ", group_by_length(WORDS))
+    print("groupby без sort:", group_by_length_groupby(WORDS))
+    print("groupby с sort:  ", group_by_length_groupby_sorted(WORDS))
+    assert group_by_length(WORDS) == dict(group_by_length_groupby_sorted(WORDS))
