@@ -199,6 +199,22 @@ def check_isomorphic(trials=500):
     print(f"is_isomorphic: {trials} проверок пройдено")
 
 
+# 6. Counter & — пересечение с кратностью: по каждому слову берётся минимум из двух
+#    счётчиков («кот» 3 и 2 → 2, «пёс» 1 и 3 → 1). set & — только факт наличия,
+#    кратность теряется.
+#    Counter нужен, когда важно, СКОЛЬКО раз: например, можно ли составить слово
+#    «мама» из букв «мамонт» (нужны две «м» и две «а», а не просто наличие букв),
+#    или насколько сильно пересекаются два документа по словам.
+#    set нужен, когда важно только, ЕСТЬ ЛИ: общие ключевые слова или темы
+#    двух документов, пересечение тегов.
+def common_words(text_a, text_b):
+    return Counter(text_a.lower().split()) & Counter(text_b.lower().split())
+
+
+def common_words_set(text_a, text_b):
+    return set(text_a.lower().split()) & set(text_b.lower().split())
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
@@ -215,3 +231,9 @@ if __name__ == "__main__":
     a, b = "то", "аа"
     print("один словарь:", is_isomorphic_one_dict(a, b), "| правильно:", is_isomorphic(a, b))
     check_isomorphic()
+    text_a = "кот кот кот пёс рыба"
+    text_b = "кот кот пёс пёс пёс"
+    print("Counter &:", common_words(text_a, text_b))
+    print("set &:    ", common_words_set(text_a, text_b))
+    assert common_words(text_a, text_b) == Counter({"кот": 2, "пёс": 1})
+    assert common_words_set(text_a, text_b) == {"кот", "пёс"}
