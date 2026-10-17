@@ -85,8 +85,57 @@ def check_count_pairs(trials=500):
     print(f"count_pairs_with_diff: {trials} проверок пройдено")
 
 
+# 3. Без counts = {0: 1} теряются все отрезки, которые начинаются с индекса 0
+#    (то есть целые префиксы списка). Для такого отрезка total - k = 0 —
+#    «префикс до начала списка», а в пустом словаре его нет.
+#    [3], k = 3 → 1 и 0 (потерян [3]); [1, 2], k = 3 → 1 и 0 (потерян [1, 2]).
+#    {0: 1} — тот же фиктивный элемент, что 0 в начале prefix в RangeSum (Ф2-02).
+def count_subarrays_with_sum(numbers, k):
+    counts = {0: 1}                  # префикс 0 «до начала списка» встречался 1 раз
+    total = 0
+    result = 0
+    for value in numbers:
+        total += value
+        result += counts.get(total - k, 0)
+        counts[total] = counts.get(total, 0) + 1
+    return result
+
+
+def count_subarrays_broken(numbers, k):
+    counts = {}                      # СЛОМАНО: нет фиктивного префикса 0
+    total = 0
+    result = 0
+    for value in numbers:
+        total += value
+        result += counts.get(total - k, 0)
+        counts[total] = counts.get(total, 0) + 1
+    return result
+
+
+def count_subarrays_with_sum_reference(numbers, k):
+    count = 0
+    for i in range(len(numbers)):
+        for j in range(i + 1, len(numbers) + 1):   # отрезок numbers[i:j], непустой
+            if sum(numbers[i:j]) == k:
+                count += 1
+    return count
+
+
+def check_subarrays(trials=500):
+    for _ in range(trials):
+        numbers = [random.randint(-3, 3) for _ in range(random.randint(0, 10))]
+        k = random.randint(-3, 3)                    # включая 0
+        assert count_subarrays_with_sum(numbers, k) == \
+            count_subarrays_with_sum_reference(numbers, k), f"вход {numbers}, k={k}"
+    print(f"count_subarrays_with_sum: {trials} проверок пройдено")
+
+
 if __name__ == "__main__":
     check_two_sum()
     print("правильная:", two_sum([4, 1], 8))
     print("сломанная: ", two_sum_broken([4, 1], 8))
     check_count_pairs()
+    for numbers, k in [([3], 3), ([1, 2], 3)]:
+        print(numbers, k, "→ правильная:", count_subarrays_with_sum(numbers, k),
+            "| сломанная:", count_subarrays_broken(numbers, k))
+    check_subarrays()
