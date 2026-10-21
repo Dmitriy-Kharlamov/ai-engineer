@@ -1,10 +1,10 @@
-# Я ставил только requests, но в файле 5 строк.
-# requests не работает сама по себе: ей нужны certifi, charset-normalizer,
-# idna и urllib3. Это её зависимости, pip поставил их автоматически,
-# а freeze записал всё, что есть в окружении.
-
 certifi==2026.7.22
 charset-normalizer==3.5.2
 idna==3.20
+numpy==2.5.4
+pandas==3.0.6
+pyarrow==26.0.0
+python-dateutil==2.9.0.post0
 requests==2.34.2
+six==1.17.0
 urllib3==2.8.0
