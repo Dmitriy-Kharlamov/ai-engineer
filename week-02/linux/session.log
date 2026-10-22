@@ -1,0 +1,905 @@
+Script started on Thu Oct 22 18:06:20 2026
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7muname -a[27m[8D[27mu[27mn[27ma[27mm[27me[27m [27m-[27ma[?2004l
+Darwin MacBook-Air-Dmitriy.local 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:11:03 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8132 arm64
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mwhich -a python3[27m[16D[27mw[27mh[27mi[27mc[27mh[27m [27m-[27ma[27m [27mp[27my[27mt[27mh[27mo[27mn[27m3[?2004l
+/Users/dmitriykharlamov/Desktop/ai-engineer/.venv/bin/python3
+/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+/usr/local/bin/python3
+/usr/bin/python3
+/opt/anaconda3/bin/python3
+/Library/Frameworks/Python.framework/Versions/3.14/bin/python3
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mecho $PATH | tr ':' '\n'[27m[24D[27me[27mc[27mh[27mo[27m [27m$[27mP[27mA[27mT[27mH[27m [27m|[27m [27mt[27mr[27m [27m'[27m:[27m'[27m [27m'[27m\[27mn[27m'[?2004l
+/Users/dmitriykharlamov/Desktop/ai-engineer/.venv/bin
+/Users/dmitriykharlamov/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand
+/Users/dmitriykharlamov/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli
+/Library/Frameworks/Python.framework/Versions/3.14/bin
+/usr/local/bin
+/System/Cryptexes/App/usr/bin
+/usr/bin
+/bin
+/usr/sbin
+/sbin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin
+/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin
+/pkg/env/global/bin
+/Users/dmitriykharlamov/Library/Application Support/Code/User/globalStorage/github.copilot-chat/debugCommand
+/Users/dmitriykharlamov/Library/Application Support/Code/User/globalStorage/github.copilot-chat/copilotCli
+/opt/anaconda3/bin
+/opt/anaconda3/condabin
+/Library/Frameworks/Python.framework/Versions/3.14/bin
+/Users/dmitriykharlamov/.vscode/extensions/ms-python.debugpy-2026.6.0-darwin-arm64/bundled/scripts/noConfigScripts
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mfind ~ -type f -size +10M -exec du -h {} + 2>/dev/null | sort -rh | h[7me[7mad -10[27m[K[A[44C[27mf[27mi[27mn[27md[27m [27m~[27m [27m-[27mt[27my[27mp[27me[27m [27mf[27m [27m-[27ms[27mi[27mz[27me[27m [27m+[27m1[27m0[27mM[27m [27m-[27me[27mx[27me[27mc[27m [27md[27mu[27m [27m-[27mh[27m [27m{[27m}[27m [27m+[27m [27m2[27m>[27m/[27md[27me[27mv[27m/[27mn[27mu[27ml[27ml[27m [27m|[27m [27ms[27mo[27mr[27mt[27m [27m-[27mr[27mh[27m [27m|[27m [27mhe[27ma[27md[27m [27m-[27m1[27m0[?2004l
+ 10G	/Users/dmitriykharlamov/Library/Application Support/Claude/vm_bundles/claudevm.bundle/rootfs.img
+1.4G	/Users/dmitriykharlamov/Library/Application Support/Google/GoogleUpdater/crx_cache/8f1d06a4d31f35e3065f4346fe1bbb8ac24cb40563d5934b42763531c32e67d5
+445M	/Users/dmitriykharlamov/Library/Application Support/com.apple.wallpaper/aerials/videos/4C108785-A7BA-422E-9C79-B0129F1D5550.mov
+368M	/Users/dmitriykharlamov/Library/Application Support/Steam/Steam.AppBundle/Steam/Contents/MacOS/Frameworks/Chromium Embedded Framework.framework/Versions/A/Chromium Embedded Framework
+304M	/Users/dmitriykharlamov/Library/Application Support/CrossOver/Bottles/game/drive_c/Program Files (x86)/Steam/steamapps/common/Left 4 Dead 2/left4dead2/media/l4d2_intro_lv.bik
+304M	/Users/dmitriykharlamov/Library/Application Support/CrossOver/Bottles/game/drive_c/Program Files (x86)/Steam/steamapps/common/Left 4 Dead 2/left4dead2/media/l4d2_intro.bik
+303M	/Users/dmitriykharlamov/Desktop/ML_Course_Karpov/03_Start_NLP_Deep_Learning/05_Lesson/5.1 Популярные архитектуры сверточных нейронных сетей. Перенос знаний.mkv
+302M	/Users/dmitriykharlamov/Desktop/ML_Course_Karpov/02_Classical_ML/19_Random_Forest_Bagging/19.4 Практика.mkv
+294M	/Users/dmitriykharlamov/Downloads/Claude.dmg
+288M	/Users/dmitriykharlamov/Desktop/ML_Course_Karpov/04_Statistics_AB_Testing/04_Lesson/4  Проверка гипотез, параметрические статистические критерии.mp4
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mfind . -name "*.py" -not -path "./.venv/*" -exec cat {} + | wc -l[27m[65D[27mf[27mi[27mn[27md[27m [27m.[27m [27m-[27mn[27ma[27mm[27me[27m [27m"[27m*[27m.[27mp[27my[27m"[27m [27m-[27mn[27mo[27mt[27m [27m-[27mp[27ma[27mt[27mh[27m [27m"[27m.[27m/[27m.[27mv[27me[27mn[27mv[27m/[27m*[27m"[27m [27m-[27me[27mx[27me[27mc[27m [27mc[27ma[27mt[27m [27m{[27m}[27m [27m+[27m [27m|[27m [27mw[27mc[27m [27m-[27ml[?2004l
+    5795
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mfind . -name "*.py" -not -path "./.venv/*" -exec wc -l {} + | grep -v[7m [7m' total$' | sort -rn | head -5[27m[K[A[20C[27mf[27mi[27mn[27md[27m [27m.[27m [27m-[27mn[27ma[27mm[27me[27m [27m"[27m*[27m.[27mp[27my[27m"[27m [27m-[27mn[27mo[27mt[27m [27m-[27mp[27ma[27mt[27mh[27m [27m"[27m.[27m/[27m.[27mv[27me[27mn[27mv[27m/[27m*[27m"[27m [27m-[27me[27mx[27me[27mc[27m [27mw[27mc[27m [27m-[27ml[27m [27m{[27m}[27m [27m+[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv [27m'[27m [27mt[27mo[27mt[27ma[27ml[27m$[27m'[27m [27m|[27m [27ms[27mo[27mr[27mt[27m [27m-[27mr[27mn[27m [27m|[27m [27mh[27me[27ma[27md[27m [27m-[27m5[?2004l
+     488 ./week-02/lesson_10.py
+     398 ./week-02/lesson_15.py
+     353 ./week-02/lesson_04.py
+     352 ./week-02/lesson_03.py
+     347 ./week-02/sql_block_01.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mgrep -rwo "assert" --include="*.py" --exclude-dir=.venv . | wc -l[27m[65D[27mg[27mr[27me[27mp[27m [27m-[27mr[27mw[27mo[27m [27m"[27ma[27ms[27ms[27me[27mr[27mt[27m"[27m [27m-[27m-[27mi[27mn[27mc[27ml[27mu[27md[27me[27m=[27m"[27m*[27m.[27mp[27my[27m"[27m [27m-[27m-[27me[27mx[27mc[27ml[27mu[27md[27me[27m-[27md[27mi[27mr[27m=[27m.[27mv[27me[27mn[27mv[27m [27m.[27m [27m|[27m [27mw[27mc[27m [27m-[27ml[?2004l
+     127
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mcd week-02/linux[27m[16D[27mc[27md[27m [27mw[27me[27me[27mk[27m-[27m0[27m2[27m/[27ml[27mi[27mn[27mu[27mx[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 noisy.py[27m[16D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27mo[27mi[27ms[27my[27m.[27mp[27my[?2004l
+stdout: строка 1
+stderr: строка 1
+stdout: строка 2
+stderr: строка 2
+Traceback (most recent call last):
+  File [35m"/Users/dmitriykharlamov/Desktop/ai-engineer/week-02/linux/noisy.py"[0m, line [35m7[0m, in [35m<module>[0m
+    raise RuntimeError("noisy.py упал специально")
+[1;35mRuntimeError[0m: [35mnoisy.py упал специально[0m
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 noisy.py > out.txt;           echo "--- out.txt:"; cat out.txt[27m[70D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27mo[27mi[27ms[27my[27m.[27mp[27my[27m [27m>[27m [27mo[27mu[27mt[27m.[27mt[27mx[27mt[27m;[27m [27m [27m [27m [27m [27m [27m [27m [27m [27m [27m [27me[27mc[27mh[27mo[27m [27m"[27m-[27m-[27m-[27m [27mo[27mu[27mt[27m.[27mt[27mx[27mt[27m:[27m"[27m;[27m [27mc[27ma[27mt[27m [27mo[27mu[27mt[27m.[27mt[27mx[27mt[?2004l
+stderr: строка 1
+stderr: строка 2
+Traceback (most recent call last):
+  File [35m"/Users/dmitriykharlamov/Desktop/ai-engineer/week-02/linux/noisy.py"[0m, line [35m7[0m, in [35m<module>[0m
+    raise RuntimeError("noisy.py упал специально")
+[1;35mRuntimeError[0m: [35mnoisy.py упал специально[0m
+--- out.txt:
+stdout: строка 1
+stdout: строка 2
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 noisy.py 2> err.txt;          echo "--- err.txt:"; cat err.txt[27m[70D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27mo[27mi[27ms[27my[27m.[27mp[27my[27m [27m2[27m>[27m [27me[27mr[27mr[27m.[27mt[27mx[27mt[27m;[27m [27m [27m [27m [27m [27m [27m [27m [27m [27m [27me[27mc[27mh[27mo[27m [27m"[27m-[27m-[27m-[27m [27me[27mr[27mr[27m.[27mt[27mx[27mt[27m:[27m"[27m;[27m [27mc[27ma[27mt[27m [27me[27mr[27mr[27m.[27mt[27mx[27mt[?2004l
+stdout: строка 1
+stdout: строка 2
+--- err.txt:
+stderr: строка 1
+stderr: строка 2
+Traceback (most recent call last):
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/week-02/linux/noisy.py", line 7, in <module>
+    raise RuntimeError("noisy.py упал специально")
+RuntimeError: noisy.py упал специально
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 noisy.py > all.txt 2>&1;      echo "--- all.txt:"; cat all.txt[27m[70D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27mo[27mi[27ms[27my[27m.[27mp[27my[27m [27m>[27m [27ma[27ml[27ml[27m.[27mt[27mx[27mt[27m [27m2[27m>[27m&[27m1[27m;[27m [27m [27m [27m [27m [27m [27me[27mc[27mh[27mo[27m [27m"[27m-[27m-[27m-[27m [27ma[27ml[27ml[27m.[27mt[27mx[27mt[27m:[27m"[27m;[27m [27mc[27ma[27mt[27m [27ma[27ml[27ml[27m.[27mt[27mx[27mt[?2004l
+--- all.txt:
+stderr: строка 1
+stderr: строка 2
+stdout: строка 1
+stdout: строка 2
+Traceback (most recent call last):
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/week-02/linux/noisy.py", line 7, in <module>
+    raise RuntimeError("noisy.py упал специально")
+RuntimeError: noisy.py упал специально
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mls -l hello.sh[27m[14D[27ml[27ms[27m [27m-[27ml[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[?2004l
+-rw-r--r--@ 1 dmitriykharlamov  staff  105 Oct 22 17:53 hello.sh
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./hello.sh   [27m[13D[27m.[27m/[27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[27m [27m [27m  h[?2004l
+zsh: permission denied: ./hello.sh
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mchmod +x hello.sh && ls -l hello.sh && ./hello.sh[27m[49D[27mc[27mh[27mm[27mo[27md[27m [27m+[27mx[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[27m [27m&[27m&[27m [27ml[27ms[27m [27m-[27ml[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[27m [27m&[27m&[27m [27m.[27m/[27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[?2004l
+-rwxr-xr-x@ 1 dmitriykharlamov  staff  105 Oct 22 17:53 hello.sh
+Привет из hello.sh, сейчас 18:09:09
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mchmod 600 hello.sh && ls -l hello.sh && ./hello.sh[27m[50D[27mc[27mh[27mm[27mo[27md[27m [27m6[27m0[27m0[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[27m [27m&[27m&[27m [27ml[27ms[27m [27m-[27ml[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[27m [27m&[27m&[27m [27m.[27m/[27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[?2004l
+-rw-------@ 1 dmitriykharlamov  staff  105 Oct 22 17:53 hello.sh
+zsh: permission denied: ./hello.sh
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mbash hello.sh[27m[13D[27mb[27ma[27ms[27mh[27m [27mh[27me[27ml[27ml[27mo[27m.[27ms[27mh[?2004l
+Привет из hello.sh, сейчас 18:09:23
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mmkdir lockdir && echo "секрет" > lockdir/file.txt && ls -l lockdir/file.txt[27m [K[A[45C[27mm[27mk[27md[27mi[27mr[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[27m [27m&[27m&[27m [27me[27mc[27mh[27mo[27m [27m"[27mс[27mе[27mк[27mр[27mе[27mт[27m"[27m [27m>[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[27m/[27mf[27mi[27ml[27me[27m.[27mt[27mx[27mt[27m [27m&[27m&[27m [27ml[27ms[27m [27m-[27ml[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[27m/[27mf[27mi[27ml[27me[27m.[27mt[27mx[27mt [K[?2004l
+-rw-r--r--@ 1 dmitriykharlamov  staff  13 Oct 22 18:09 lockdir/file.txt
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mchmod -x lockdir && ls -ld lockdir[27m[34D[27mc[27mh[27mm[27mo[27md[27m [27m-[27mx[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[27m [27m&[27m&[27m [27ml[27ms[27m [27m-[27ml[27md[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[?2004l
+drw-r--r--@ 3 dmitriykharlamov  staff  96 Oct 22 18:09 lockdir
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mcat lockdir/file.txt[27m[20D[27mc[27ma[27mt[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[27m/[27mf[27mi[27ml[27me[27m.[27mt[27mx[27mt[?2004l
+cat: lockdir/file.txt: Permission denied
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mchmod +x lockdir[27m[16D[27mc[27mh[27mm[27mo[27md[27m [27m+[27mx[27m [27ml[27mo[27mc[27mk[27md[27mi[27mr[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 slow.py &[27m[17D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m&[?2004l
+[1] 52079
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hslow.py запущен, PID 52079
+счётчик: 1
+счётчик: 2
+счётчик: 3
+счётчик: 4
+счётчик: 5
+счётчик: 6
+счётчик: 7
+счётчик: 8
+счётчик: 9
+[7msleep 3[27m[27ms[27ml[27me[27me[27mp[27m [27m3[?2004l
+счётчик: 10
+счётчик: 11
+счётчик: 12
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 13
+счётчик: 14
+счётчик: 15
+счётчик: 16
+счётчик: 17
+счётчик: 18
+счётчик: 19
+счётчик: 20
+счётчик: 21
+счётчик: 22
+счётчик: 23
+счётчик: 24
+счётчик: 25
+счётчик: 26
+[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 27
+счётчик: 28
+ счётчик: 29
+счётчик: 30
+ exсчётчик: 31
+it  счётчик: 32
+счётчик: 33
+sсчётчик: 34
+tсчётчик: 35
+ счётчик: 36
+счётчик: 37
+счётчик: 38
+счётчик: 39
+счётчик: 40
+счётчик: 41
+счётчик: 42
+счётчик: 43
+счётчик: 44
+счётчик: 45
+счётчик: 46
+счётчик: 47
+счётчик: 48
+счётчик: 49
+счётчик: 50
+счётчик: 51
+счётчик: 52
+счётчик: 53
+счётчик: 54
+счётчик: 55
+счётчик: 56
+счётчик: 57
+счётчик: 58
+счётчик: 59
+счётчик: 60
+счётчик: 61
+счётчик: 62
+счётчик: 63
+счётчик: 64
+счётчик: 65
+счётчик: 66
+счётчик: 67
+счётчик: 68
+счётчик: 69
+счётчик: 70
+счётчик: 71
+счётчик: 72
+счётчик: 73
+счётчик: 74
+счётчик: 75
+счётчик: 76
+счётчик: 77
+счётчик: 78
+счётчик: 79
+
+[Kсчётчик: 80
+счётчик: 81
+счётчик: 82
+[7msleep 3[27m
+[K[A[27ms[27ml[27me[27me[27mp[27m [27m3[1B[K[?2004l
+zsh: command not found: exs
+счётчик: 83
+счётчик: 84
+счётчик: 85
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 86
+счётчик: 87
+счётчик: 88
+счётчик: 89
+счётчик: 90
+счётчик: 91
+счётчик: 92
+счётчик: 93
+[7mps aux | grep slow.py | grep -v grep[27mсчётчик: 94
+[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[?2004l
+dmitriykharlamov 52079   0.0  0.1 435268000  10480 s000  SN    6:10PM   0:00.05 /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python slow.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 95
+счётчик: 96
+счётчик: 97
+счётчик: 98
+счётчик: 99
+счётчик: 100
+счётчик: 101
+счётчик: 102
+счётчик: 103
+[7mkill <PID>[27mсчётчик: 104
+[10D[27mk[27mi[27ml[27ml[27m [27m<[27mP[27mI[27mD[27m>[?2004l
+zsh: parse error near `\n'
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 105
+счётчик: 106
+счётчик: 107
+счётчик: 108
+счётчик: 109
+счётчик: 110
+счётчик: 111
+счётчик: 112
+счётчик: 113
+счётчик: 114
+счётчик: 115
+[7mpython3 slow.py &[27m[17D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m&[?2004l
+[2] 52609
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hslow.py запущен, PID 52609
+счётчик: 1
+счётчик: 116
+счётчик: 2
+счётчик: 117
+счётчик: 3
+счётчик: 118
+счётчик: 4
+счётчик: 119
+счётчик: 5
+счётчик: 120
+счётчик: 6
+счётчик: 121
+счётчик: 7
+счётчик: 122
+счётчик: 8
+счётчик: 123
+счётчик: 9
+счётчик: 124
+[7msleep 3[27mсчётчик: 10
+счётчик: 125
+[27ms[27ml[27me[27me[27mp[27m [27m3[?2004l
+счётчик: 11
+счётчик: 126
+счётчик: 12
+счётчик: 127
+счётчик: 13
+счётчик: 128
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 14
+счётчик: 129
+счётчик: 15
+счётчик: 130
+счётчик: 16
+счётчик: 131
+[7mps aux | grep slow.py | grep -v grep[27mсчётчик: 17
+счётчик: 132
+[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[?2004l
+dmitriykharlamov 52609   0.0  0.1 435267856  10672 s000  SN    6:11PM   0:00.04 /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python slow.py
+dmitriykharlamov 52079   0.0  0.1 435268000  10512 s000  SN    6:10PM   0:00.05 /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python slow.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 18
+счётчик: 133
+счётчик: 19
+счётчик: 134
+счётчик: 20
+счётчик: 135
+счётчик: 21
+счётчик: 136
+счётчик: 22
+счётчик: 137
+счётчик: 23
+счётчик: 138
+счётчик: 24
+счётчик: 139
+счётчик: 25
+счётчик: 140
+счётчик: 26
+счётчик: 141
+[7mkill -9 <PID> [27m[14D[27mk[27mi[27ml[27ml[27m [27m-[27m9[27m [27m<[27mP[27mI[27mD[27m>[27m [?2004l
+zsh: parse error near `\n'
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 27
+счётчик: 142
+счётчик: 28
+счётчик: 143
+счётчик: 29
+счётчик: 144
+счётчик: 30
+счётчик: 145
+счётчик: 31
+счётчик: 146
+счётчик: 32
+счётчик: 147
+счётчик: 33
+[7mkill -9 <PID> [27mсчётчик: 148
+[14D[27mk[27mi[27ml[27ml[27m [27m-[27m9[27m [27m<[27mP[27mI[27mD[27m>[27m счётчик: 34
+счётчик: 149
+счётчик: 35
+счётчик: 150
+счётчик: 36
+счётчик: 151
+счётчик: 37
+счётчик: 152
+счётчик: 38
+счётчик: 153
+счётчик: 39
+счётчик: 154
+счётчик: 40
+счётчик: 155
+счётчик: 41
+счётчик: 156
+счётчик: 42
+счётчик: 157
+счётчик: 43
+счётчик: 158
+[7mkill -9 <PID>[27mсчётчик: 44
+счётчик: 159
+[13D[27mk[27mi[27ml[27ml[27m [27m-[27m9[27m [27m<[27mP[27mI[27mD[27m>[?2004l
+zsh: parse error near `\n'
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 45
+счётчик: 160
+счётчик: 46
+счётчик: 161
+счётчик: 47
+счётчик: 162
+счётчик: 48
+счётчик: 163
+счётчик: 49
+счётчик: 164
+счётчик: 50
+счётчик: 165
+счётчик: 51
+счётчик: 166
+счётчик: 52
+счётчик: 167
+счётчик: 53
+счётчик: 168
+счётчик: 54
+счётчик: 169
+счётчик: 55
+счётчик: 170
+счётчик: 56
+счётчик: 171
+счётчик: 57
+счётчик: 172
+счётчик: 58
+счётчик: 173
+счётчик: 59
+счётчик: 174
+счётчик: 60
+счётчик: 175
+счётчик: 61
+счётчик: 176
+счётчик: 62
+счётчик: 177
+счётчик: 63
+счётчик: 178
+счётчик: 64
+счётчик: 179
+счётчик: 65
+счётчик: 180
+счётчик: 66
+счётчик: 181
+счётчик: 67
+счётчик: 182
+счётчик: 68
+счётчик: 183
+счётчик: 69
+счётчик: 184
+счётчик: 70
+счётчик: 185
+счётчик: 71
+счётчик: 186
+счётчик: 72
+счётчик: 187
+счётчик: 73
+счётчик: 188
+счётчик: 74
+счётчик: 189
+счётчик: 75
+счётчик: 190
+счётчик: 76
+счётчик: 191
+счётчик: 77
+счётчик: 192
+счётчик: 78
+счётчик: 193
+счётчик: 79
+счётчик: 194
+счётчик: 80
+счётчик: 195
+счётчик: 81
+счётчик: 196
+счётчик: 82
+счётчик: 197
+счётчик: 83
+счётчик: 198
+счётчик: 84
+счётчик: 199
+счётчик: 85
+счётчик: 200
+счётчик: 86
+счётчик: 201
+счётчик: 87
+счётчик: 202
+счётчик: 88
+счётчик: 203
+счётчик: 89
+счётчик: 204
+счётчик: 90
+счётчик: 205
+счётчик: 91
+счётчик: 206
+счётчик: 92
+счётчик: 207
+счётчик: 93
+счётчик: 208
+счётчик: 94
+счётчик: 209
+счётчик: 95
+счётчик: 210
+счётчик: 96
+счётчик: 211
+счётчик: 97
+счётчик: 212
+счётчик: 98
+счётчик: 213
+счётчик: 99
+счётчик: 214
+счётчик: 100
+счётчик: 215
+счётчик: 101
+счётчик: 216
+счётчик: 102
+счётчик: 217
+счётчик: 103
+счётчик: 218
+счётчик: 104
+счётчик: 219
+счётчик: 105
+счётчик: 220
+счётчик: 106
+счётчик: 221
+[7mkill <PID>[27m[10D[27mk[27mi[27ml[27ml[27m [27m<[27mP[27mI[27mD[27m>[?2004l
+zsh: parse error near `\n'
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 107
+счётчик: 222
+счётчик: 108
+счётчик: 223
+счётчик: 109
+счётчик: 224
+счётчик: 110
+счётчик: 225
+счётчик: 111
+счётчик: 226
+счётчик: 112
+счётчик: 227
+счётчик: 113
+счётчик: 228
+счётчик: 114
+счётчик: 229
+счётчик: 115
+счётчик: 230
+счётчик: 116
+счётчик: 231
+счётчик: 117
+счётчик: 232
+счётчик: 118
+счётчик: 233
+счётчик: 119
+счётчик: 234
+счётчик: 120
+счётчик: 235
+счётчик: 121
+счётчик: 236
+счётчик: 122
+счётчик: 237
+счётчик: 123
+счётчик: 238
+счётчик: 124
+счётчик: 239
+счётчик: 125
+счётчик: 240
+счётчик: 126
+счётчик: 241
+счётчик: 127
+счётчик: 242
+счётчик: 128
+счётчик: 243
+счётчик: 129
+счётчик: 244
+счётчик: 130
+счётчик: 245
+счётчик: 131
+счётчик: 246
+счётчик: 132
+счётчик: 247
+счётчик: 133
+счётчик: 248
+счётчик: 134
+счётчик: 249
+счётчик: 135
+счётчик: 250
+счётчик: 136
+счётчик: 251
+счётчик: 137
+счётчик: 252
+счётчик: 138
+счётчик: 253
+счётчик: 139
+счётчик: 254
+счётчик: 140
+счётчик: 255
+счётчик: 141
+счётчик: 256
+счётчик: 142
+счётчик: 257
+счётчик: 143
+счётчик: 258
+счётчик: 144
+счётчик: 259
+счётчик: 145
+счётчик: 260
+счётчик: 146
+счётчик: 261
+счётчик: 147
+счётчик: 262
+счётчик: 148
+счётчик: 263
+счётчик: 149
+счётчик: 264
+счётчик: 150
+счётчик: 265
+счётчик: 151
+счётчик: 266
+счётчик: 152
+счётчик: 267
+счётчик: 153
+счётчик: 268
+счётчик: 154
+счётчик: 269
+счётчик: 155
+счётчик: 270
+счётчик: 156
+счётчик: 271
+счётчик: 157
+счётчик: 272
+счётчик: 158
+счётчик: 273
+счётчик: 159
+счётчик: 274
+счётчик: 160
+счётчик: 275
+счётчик: 161
+счётчик: 276
+счётчик: 162
+счётчик: 277
+счётчик: 163
+счётчик: 278
+счётчик: 164
+счётчик: 279
+счётчик: 165
+счётчик: 280
+счётчик: 166
+счётчик: 281
+счётчик: 167
+счётчик: 282
+счётчик: 168
+счётчик: 283
+счётчик: 169
+счётчик: 284
+счётчик: 170
+счётчик: 285
+счётчик: 171
+счётчик: 286
+счётчик: 172
+счётчик: 287
+счётчик: 173
+счётчик: 288
+счётчик: 174
+счётчик: 289
+счётчик: 175
+счётчик: 290
+счётчик: 176
+счётчик: 291
+[7mps aux | grep slow.py | grep -v grep[27mсчётчик: 177
+счётчик: 292
+счётчик: 178
+счётчик: 293
+счётчик: 179
+счётчик: 294
+счётчик: 180
+счётчик: 295
+счётчик: 181
+счётчик: 296
+счётчик: 182
+счётчик: 297
+счётчик: 183
+счётчик: 298
+счётчик: 184
+счётчик: 299
+счётчик: 185
+счётчик: 300
+счётчик: 186
+счётчик: 301
+счётчик: 187
+счётчик: 302
+счётчик: 188
+счётчик: 303
+счётчик: 189
+счётчик: 304
+счётчик: 190
+счётчик: 305
+счётчик: 191
+счётчик: 306
+счётчик: 192
+счётчик: 307
+счётчик: 193
+счётчик: 308
+счётчик: 194
+счётчик: 309
+счётчик: 195
+счётчик: 310
+счётчик: 196
+счётчик: 311
+[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[7mkill 177[27m[8D[27mk[27mi[27ml[27ml[27m [27m1[27m7[27m7[?2004l
+grep: 177: No such file or directory
+счётчик: 197
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004hсчётчик: 312
+счётчик: 198
+счётчик: 313
+счётчик: 199
+счётчик: 314
+счётчик: 200
+счётчик: 315
+счётчик: 201
+счётчик: 316
+счётчик: 202
+счётчик: 317
+счётчик: 203
+счётчик: 318
+счётчик: 204
+счётчик: 319
+счётчик: 205
+счётчик: 320
+счётчик: 206
+счётчик: 321
+счётчик: 207
+счётчик: 322
+счётчик: 208
+счётчик: 323
+счётчик: 209
+счётчик: 324
+счётчик: 210
+счётчик: 325
+счётчик: 211
+счётчик: 326
+счётчик: 212
+счётчик: 327
+счётчик: 213
+счётчик: 328
+счётчик: 214
+счётчик: 329
+счётчик: 215
+счётчик: 330
+счётчик: 216
+счётчик: 331
+счётчик: 217
+счётчик: 332
+счётчик: 218
+счётчик: 333
+счётчик: 219
+счётчик: 334
+счётчик: 220
+счётчик: 335
+счётчик: 221
+счётчик: 336
+счётчик: 222
+счётчик: 337
+счётчик: 223
+счётчик: 338
+счётчик: 224
+счётчик: 339
+счётчик: 225
+счётчик: 340
+счётчик: 226
+счётчик: 341
+счётчик: 227
+счётчик: 342
+счётчик: 228
+счётчик: 343
+счётчик: 229
+счётчик: 344
+счётчик: 230
+счётчик: 345
+счётчик: 231
+счётчик: 346
+счётчик: 232
+счётчик: 347
+счётчик: 233
+счётчик: 348
+счётчик: 234
+счётчик: 349
+счётчик: 235
+счётчик: 350
+счётчик: 236
+счётчик: 351
+счётчик: 237
+счётчик: 352
+счётчик: 238
+счётчик: 353
+счётчик: 239
+счётчик: 354
+счётчик: 240
+счётчик: 355
+счётчик: 241
+счётчик: 356
+счётчик: 242
+счётчик: 357
+счётчик: 243
+счётчик: 358
+счётчик: 244
+счётчик: 359
+[7mpkill -f slow.py[27m[16D[27mp[27mk[27mi[27ml[27ml[27m [27m-[27mf[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[?2004l
+получен SIGTERM — завершаюсь корректно
+получен SIGTERM — завершаюсь корректно
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h
+[1]  - done       python3 slow.py
+[0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K
+[2]  + done       python3 slow.py
+[0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[7mpython3 slow.py > slow.log &[27m[28D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m>[27m [27ms[27ml[27mo[27mw[27m.[27ml[27mo[27mg[27m [27m&[?2004l
+[1] 55429
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7msleep 3[27m[27ms[27ml[27me[27me[27mp[27m [27m3[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mps aux | grep slow.py | grep -v grep[27m[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[?2004l
+dmitriykharlamov 55429   0.0  0.1 435267392  10672 s000  SN    6:23PM   0:00.03 /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python slow.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mkill 55429[27m[10D[27mk[27mi[27ml[27ml[27m [27m5[27m5[27m4[27m2[27m9[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h
+[1]  + done       python3 slow.py > slow.log
+[0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[7mcat slow.log[27m[12D[27mc[27ma[27mt[27m [27ms[27ml[27mo[27mw[27m.[27ml[27mo[27mg[?2004l
+slow.py запущен, PID 55429
+счётчик: 1
+счётчик: 2
+счётчик: 3
+счётчик: 4
+счётчик: 5
+счётчик: 6
+счётчик: 7
+счётчик: 8
+счётчик: 9
+счётчик: 10
+счётчик: 11
+счётчик: 12
+счётчик: 13
+счётчик: 14
+счётчик: 15
+счётчик: 16
+счётчик: 17
+счётчик: 18
+счётчик: 19
+счётчик: 20
+счётчик: 21
+счётчик: 22
+счётчик: 23
+счётчик: 24
+счётчик: 25
+счётчик: 26
+счётчик: 27
+счётчик: 28
+счётчик: 29
+счётчик: 30
+счётчик: 31
+счётчик: 32
+счётчик: 33
+счётчик: 34
+счётчик: 35
+счётчик: 36
+счётчик: 37
+счётчик: 38
+счётчик: 39
+счётчик: 40
+счётчик: 41
+счётчик: 42
+счётчик: 43
+счётчик: 44
+счётчик: 45
+счётчик: 46
+счётчик: 47
+счётчик: 48
+счётчик: 49
+счётчик: 50
+счётчик: 51
+счётчик: 52
+счётчик: 53
+счётчик: 54
+счётчик: 55
+счётчик: 56
+счётчик: 57
+счётчик: 58
+счётчик: 59
+счётчик: 60
+счётчик: 61
+получен SIGTERM — завершаюсь корректно
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 slow.py > slow.log &[27m[28D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m>[27m [27ms[27ml[27mo[27mw[27m.[27ml[27mo[27mg[27m [27m&[?2004l
+[1] 55845
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7msleep 3[27m[27ms[27ml[27me[27me[27mp[27m [27m3[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mps aux | grep slow.py | grep -v grep[27m[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[?2004l
+dmitriykharlamov 55845   0.0  0.1 435268144  15328 s000  SN    6:24PM   0:00.04 /Library/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python slow.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mkill -9[27m[27mk[27mi[27ml[27ml[27m [27m-[27m9 55845[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h
+[1]  + killed     python3 slow.py > slow.log
+[0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[7mcat slow.log[27m[12D[27mc[27ma[27mt[27m [27ms[27ml[27mo[27mw[27m.[27ml[27mo[27mg[?2004l
+slow.py запущен, PID 55845
+счётчик: 1
+счётчик: 2
+счётчик: 3
+счётчик: 4
+счётчик: 5
+счётчик: 6
+счётчик: 7
+счётчик: 8
+счётчик: 9
+счётчик: 10
+счётчик: 11
+счётчик: 12
+счётчик: 13
+счётчик: 14
+счётчик: 15
+счётчик: 16
+счётчик: 17
+счётчик: 18
+счётчик: 19
+счётчик: 20
+счётчик: 21
+счётчик: 22
+счётчик: 23
+счётчик: 24
+счётчик: 25
+счётчик: 26
+счётчик: 27
+счётчик: 28
+счётчик: 29
+счётчик: 30
+счётчик: 31
+счётчик: 32
+счётчик: 33
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mps aux | grep slow.py | grep -v grep[27m[36D[27mp[27ms[27m [27ma[27mu[27mx[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27ms[27ml[27mo[27mw[27m.[27mp[27my[27m [27m|[27m [27mg[27mr[27me[27mp[27m [27m-[27mv[27m [27mg[27mr[27me[27mp[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mchmod +x check.sh steps_strict.sh steps_loose.sh[27m[48D[27mc[27mh[27mm[27mo[27md[27m [27m+[27mx[27m [27mc[27mh[27me[27mc[27mk[27m.[27ms[27mh[27m [27ms[27mt[27me[27mp[27ms[27m_[27ms[27mt[27mr[27mi[27mc[27mt[27m.[27ms[27mh[27m [27ms[27mt[27me[27mp[27ms[27m_[27ml[27mo[27mo[27ms[27me[27m.[27ms[27mh[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./check.sh; echo "код: $?"[27m[26D[27m.[27m/[27mc[27mh[27me[27mc[27mk[27m.[27ms[27mh[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+использование: ./check.sh <файл>
+код: 1
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./check.sh нет_файла.txt; echo "код: $?"[27m[40D[27m.[27m/[27mc[27mh[27me[27mc[27mk[27m.[27ms[27mh[27m [27mн[27mе[27mт[27m_[27mф[27mа[27mй[27mл[27mа[27m.[27mt[27mx[27mt[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+ошибка: файл не найден: нет_файла.txt
+код: 1
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./check.sh noisy.py; echo "код: $?"[27m[35D[27m.[27m/[27mc[27mh[27me[27mc[27mk[27m.[27ms[27mh[27m [27mn[27mo[27mi[27ms[27my[27m.[27mp[27my[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+строк в noisy.py: 7
+код: 0
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./steps_strict.sh; echo "код: $?"[27m[33D[27m.[27m/[27ms[27mt[27me[27mp[27ms[27m_[27ms[27mt[27mr[27mi[27mc[27mt[27m.[27ms[27mh[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+шаг 1: начинаю
+cat: /no/such/file.txt: No such file or directory
+код: 1
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7m./steps_loose.sh; echo "код: $?"[27m[32D[27m.[27m/[27ms[27mt[27me[27mp[27ms[27m_[27ml[27mo[27mo[27ms[27me[27m.[27ms[27mh[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+шаг 1: начинаю
+cat: /no/such/file.txt: No such file or directory
+шаг 3: готово, всё прошло успешно
+код: 0
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 needs_key.py; echo "код: $?"[27m[36D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27me[27me[27md[27ms[27m_[27mk[27me[27my[27m.[27mp[27my[27m;[27m [27me[27mc[27mh[27mo[27m [27m"[27mк[27mо[27mд[27m:[27m [27m$[27m?[27m"[?2004l
+ошибка: не задана переменная окружения API_KEY.
+Задай её: export API_KEY=... или API_KEY=... python3 needs_key.py
+код: 1
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mAPI_KEY=x python3 needs_key.py[27m[30D[27mA[27mP[27mI[27m_[27mK[27mE[27mY[27m=[27mx[27m [27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27me[27me[27md[27ms[27m_[27mk[27me[27my[27m.[27mp[27my[?2004l
+API_KEY получен, длина 1 символов
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 needs_key.py[27m[20D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27me[27me[27md[27ms[27m_[27mk[27me[27my[27m.[27mp[27my[?2004l
+ошибка: не задана переменная окружения API_KEY.
+Задай её: export API_KEY=... или API_KEY=... python3 needs_key.py
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mexport API_KEY=x[27m[16D[27me[27mx[27mp[27mo[27mr[27mt[27m [27mA[27mP[27mI[27m_[27mK[27mE[27mY[27m=[27mx[?2004l
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mpython3 needs_key.py[27m[20D[27mp[27my[27mt[27mh[27mo[27mn[27m3[27m [27mn[27me[27me[27md[27ms[27m_[27mk[27me[27my[27m.[27mp[27my[?2004l
+API_KEY получен, длина 1 символов
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy linux % [K[?2004h[7mexit[27m[27me[27mx[27mi[27mt[?2004l
+
+Script done on Thu Oct 22 18:27:08 2026
+Script started on Thu Oct 22 18:27:25 2026
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004h[7mecho "API_KEY=[$API_KEY]"[27m[25D[27me[27mc[27mh[27mo[27m [27m"[27mA[27mP[27mI[27m_[27mK[27mE[27mY[27m=[27m[[27m$[27mA[27mP[27mI[27m_[27mK[27mE[27mY[27m][27m"[?2004l
+API_KEY=[]
+[1m[7m%[27m[1m[0m                                                                                                                        [0m[27m[24m[Jdmitriykharlamov@MacBook-Air-Dmitriy ai-engineer % [K[?2004hуучу  eexit[?2004l
+
+Script done on Thu Oct 22 18:27:38 2026
