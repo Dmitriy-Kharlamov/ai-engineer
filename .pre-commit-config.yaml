@@ -1,0 +1,9 @@
+# Хуки перед каждым коммитом. Установка: pre-commit install
+# Прогнать по всему репозиторию: pre-commit run --all-files
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3            # та же версия, что в dev-зависимостях
+    hooks:
+      - id: ruff-check      # линтер; --fix чинит безопасное, остальное останавливает коммит
+        args: [--fix]
+      - id: ruff-format     # форматтер
