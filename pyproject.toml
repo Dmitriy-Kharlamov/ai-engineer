@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ragkit"
+version = "0.1.0"
+description = "Учебный пакет курса AI-инженера: чанки, документы, настройки"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic-settings>=2.0",
+    "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+packages = ["ragkit"]          # в корне ещё week-*/ и todo/ — явно берём только ragkit
