@@ -9,3 +9,10 @@ __pycache__/
 /tasks.json
 /todo_session.txt
 /week-02/*.db
+# секреты
+.env.local
+*.key
+*.pem
+# сборка пакета
+*.egg-info/
+build/
