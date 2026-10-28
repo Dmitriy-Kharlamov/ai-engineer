@@ -4,7 +4,8 @@ import time
 from pathlib import Path
 
 import requests
-from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
+from requests.exceptions import ConnectionError as RequestsConnectionError
+from requests.exceptions import HTTPError, RequestException, Timeout
 
 # Если httpbin.org недоступен — можно указать другой адрес:
 #   HTTPBIN_URL=https://другой-адрес python week-03/lesson_01.py
@@ -185,7 +186,7 @@ print(f"отдельные / Session: {t_separate / t_session:.1f}")
 print("\n6. Исключения")
 try:
     requests.get("https://this-host-does-not-exist-12345.com", timeout=5)
-except ConnectionError as e:
+except RequestsConnectionError as e:
     print("ConnectionError:", e)
 
 try:

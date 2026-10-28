@@ -8,6 +8,7 @@ import urllib.parse
 import uuid
 from collections import Counter, defaultdict
 from http import HTTPStatus
+from itertools import pairwise
 from types import SimpleNamespace
 
 import httpx
@@ -63,7 +64,7 @@ class ControlServer:
             method, target, _ = lines[0].split(" ", 2)
             headers = {
                 k.strip().lower(): v.strip()
-                for k, v in (l.split(":", 1) for l in lines[1:] if ":" in l)
+                for k, v in (line.split(":", 1) for line in lines[1:] if ":" in line)
             }
             await reader.readexactly(int(headers.get("content-length", 0)))
             if self.active >= self.max_conn:  # лимит одновременных
@@ -265,6 +266,7 @@ async def retry_request(
             f"прошло {now() - start:.2f} с"
         )
         await asyncio.sleep(delay)
+    raise ValueError(f"attempts должно быть ≥ 1, получено {attempts}")
 
 
 async def task2(srv, client):
@@ -546,6 +548,7 @@ async def place_order_buggy(client, url, attempts=3):
         if r.status_code < 400:
             return r
         await asyncio.sleep(0.1)
+    raise RuntimeError(f"заказ не подтверждён за {attempts} попыток")
 
 
 async def place_order_fixed(client, url):
@@ -632,7 +635,7 @@ def task8_sync(srv_url, srv):
         )
         resp = s.get(f"{srv_url}/flaky/u3?fail=3", timeout=5)
     times = srv.times["u3"]
-    gaps = [round(b - a, 2) for a, b in zip(times, times[1:])]
+    gaps = [round(b - a, 2) for a, b in pairwise(times)]
     print(
         f"   реальный прогон через requests: статус {resp.status_code}, "
         f"запросов {len(times)}, паузы между ними: {gaps}"

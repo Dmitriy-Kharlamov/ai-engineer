@@ -82,7 +82,7 @@ print(jaccard("Это пример текста", "Это другой текс�
 
 
 # 7
-def add_tag(tag, tags=[]):
+def add_tag(tag, tags=[]):  # noqa: B006 — намеренно: это демонстрация ловушки из урока
     tags.append(tag)
     return tags
 
