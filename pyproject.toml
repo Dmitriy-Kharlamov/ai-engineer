@@ -15,3 +15,38 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["ragkit"]          # в корне ещё week-*/ и todo/ — явно берём только ragkit
+
+[project.optional-dependencies]
+dev = ["mypy>=2.4", "ruff>=0.17", "pre-commit>=4.0"]
+
+# ---------------------------------------------------------------------------
+# mypy: строгая проверка пакета ragkit (учебные week-*/ не типизированы)
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.14"
+files = ["ragkit", "week-03/lesson_05.py"]   # lesson_05_any.py — намеренные ошибки
+strict = true
+warn_unreachable = true          # НЕ входит в strict: ловит код после return
+show_error_codes = true
+warn_unused_ignores = true       # (входит в strict, пишу явно — это решение, а не случайность)
+plugins = ["pydantic.mypy"]      # понимает конструкторы pydantic-моделей и Settings
+
+# ---------------------------------------------------------------------------
+# ruff: линтер и форматтер для всего репозитория
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py311"         # = requires-python; UP-правила не предложат синтаксис новее
+extend-exclude = [
+    ".venv",
+    "week-03/lesson_05_demo.py",  # семь НАМЕРЕННЫХ ошибок задания 1; явный запуск его проверит
+]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "B", "A", "SIM", "UP", "RET", "C4", "PTH", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+# Учебные файлы: длинные комментарии-объяснения рядом с кодом и намеренные
+# демонстрации ловушек. Пакет ragkit под эти исключения не попадает.
+"week-*/**" = ["E501", "PTH", "RET504"]
+"todo/**" = ["PTH"]
