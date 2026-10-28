@@ -169,7 +169,7 @@ def is_isomorphic(a, b):
     if len(a) != len(b):
         return False
     forward, backward = {}, {}
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=True):
         if forward.setdefault(x, y) != y:
             return False
         if backward.setdefault(y, x) != x:
@@ -190,7 +190,7 @@ def is_isomorphic_one_dict(a, b):
     if len(a) != len(b):
         return False
     forward = {}
-    for x, y in zip(a, b):
+    for x, y in zip(a, b, strict=True):  # noqa: SIM110 — all() с setdefault читается хуже
         if forward.setdefault(x, y) != y:
             return False
     return True

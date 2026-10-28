@@ -194,7 +194,7 @@ Q4 = """
     ORDER BY document_id, id
 """
 show("4. LAG и разница", Q4)
-for doc_id, cid, text, tokens, prev, delta in cur.execute(Q4).fetchall():
+for _doc_id, _cid, _text, tokens, prev, delta in cur.execute(Q4).fetchall():
     if prev is None:  # первый чанк документа
         assert delta == tokens
 # LAG(tokens) у первого чанка документа — None: строки выше в этом окне нет.

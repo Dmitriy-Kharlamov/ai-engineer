@@ -19,8 +19,8 @@ class TaskStorage:
             with open(self.path, encoding="utf-8") as file:
                 data = json.load(file)
             return TaskList.from_dict(data)
-        except (json.JSONDecodeError, KeyError, ValueError, TypeError):
-            raise CorruptedFileError(self.path)
+        except (json.JSONDecodeError, KeyError, ValueError, TypeError) as err:
+            raise CorruptedFileError(self.path) from err
 
     def save(self, task_list):
         with open(self.path, "w", encoding="utf-8") as file:

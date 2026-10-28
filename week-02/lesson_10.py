@@ -5,6 +5,7 @@ import time
 import traceback
 import unicodedata
 from collections import namedtuple
+from itertools import pairwise
 from math import log2
 from operator import attrgetter, itemgetter
 
@@ -389,7 +390,7 @@ for c in final:
 
 assert [c.text for c in final] == ["g1", "g2", "c2", "c1", "a2", "a3", "a1"]
 # проверка свойством: источники по убыванию, внутри — токены по возрастанию
-for prev, cur in zip(final, final[1:]):
+for prev, cur in pairwise(final):
     assert prev.source > cur.source or (prev.source == cur.source and prev.tokens <= cur.tokens)
 # Почему работает: Timsort УСТОЙЧИВ — элементы с равным ключом сохраняют
 #   взаимный порядок. Вторая сортировка (по source) переставляет группы, но

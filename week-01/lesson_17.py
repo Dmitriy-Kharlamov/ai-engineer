@@ -1,3 +1,6 @@
+from dataclasses import dataclass, field
+
+
 # 1 и 2
 class Person:
     def __init__(self, name, age, city):
@@ -187,7 +190,6 @@ print("После ошибки:", doc)
 
 
 # 6
-from dataclasses import dataclass, field
 
 
 @dataclass

@@ -250,12 +250,12 @@ print("   5.3 трассировка с локальными переменны�
 
 
 def call_api_leaky(settings):
-    key = settings.api_key.get_secret_value()  # распакован в локальную переменную
+    key = settings.api_key.get_secret_value()  # noqa: F841 — распакован; нужен трассировке
     raise ConnectionError("API недоступен")
 
 
 def call_api_safe(settings):
-    secret = settings.api_key  # остаётся SecretStr
+    secret = settings.api_key  # noqa: F841 — остаётся SecretStr; нужен трассировке
     raise ConnectionError("API недоступен")
 
 
@@ -266,7 +266,7 @@ for fn in (call_api_leaky, call_api_safe):
     except ConnectionError as e:
         tb = "".join(traceback.TracebackException.from_exception(e, capture_locals=True).format())
         line = next(
-            l.strip() for l in tb.splitlines() if l.strip().startswith(("key =", "secret ="))
+            ln.strip() for ln in tb.splitlines() if ln.strip().startswith(("key =", "secret ="))
         )
         print(f"      {fn.__name__:15} локальная переменная в отчёте: {line}")
         assert (KEY in line) == (fn is call_api_leaky)
@@ -345,7 +345,6 @@ assert "sk-это-секрет-из-коммита" in leaked
 # ---------------------------------------------------------------------------
 print("\n7. ragkit.config")
 try:
-    from ragkit.config import Settings as RagkitSettings
     from ragkit.config import get_settings
 
     print("   get_settings() is get_settings():", get_settings() is get_settings())

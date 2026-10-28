@@ -45,7 +45,7 @@ for name, score in results:
 print(names)
 print(scores)
 
-zipped_names, zipped_scores = zip(*results)
+zipped_names, zipped_scores = zip(*results, strict=True)
 print(zipped_names)
 print(zipped_scores)
 

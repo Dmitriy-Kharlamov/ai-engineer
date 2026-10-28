@@ -28,7 +28,7 @@ print(grid)
 # 4
 names = ["bert", "gpt-4", "t5", "llama"]
 scores = [0.87, 0.94, 0.79, 0.88]
-model_dict = {name: score for name, score in zip(names, scores)}
+model_dict = dict(zip(names, scores, strict=True))
 print(model_dict)
 model_dict_more_than_0_85 = {x: y for x, y in model_dict.items() if y > 0.85}
 print(model_dict_more_than_0_85)
