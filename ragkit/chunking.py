@@ -1,6 +1,7 @@
+from functools import total_ordering
+
 from .exceptions import ChunkTooLargeError
 
-from functools import total_ordering
 
 @total_ordering
 class Chunk:
@@ -12,18 +13,18 @@ class Chunk:
     @property
     def tokens(self):
         return len(self.text.split())
-    
+
     def preview(self, n=50):
         return self.text[:n] + "..." if len(self.text) > n else self.text
-    
+
     def is_too_large(self, max_tokens=500):
         return self.tokens > max_tokens
-    
+
     def __lt__(self, other):
         if not isinstance(other, Chunk):
             return NotImplemented
         return self.tokens < other.tokens
-    
+
     def __eq__(self, other):
         if not isinstance(other, Chunk):
             return NotImplemented
@@ -34,18 +35,18 @@ class Chunk:
         # поэтому и хеш считаем по числу токенов — равные чанки дают равный хеш.
         # Следствие: все чанки с одинаковым числом слов для словаря — один ключ.
         return hash(self.tokens)
-    
+
     def __repr__(self):
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"
 
 
 class PDFChunk(Chunk):
     def __init__(self, text, source, page, metadata=None):
-        super().__init__(text, source, metadata)   
-        self.page = page    
-    def __repr__(self):
-        return f"PDFChunk(source={self.source!r}, tokens={self.tokens}, page={self.page})" 
+        super().__init__(text, source, metadata)
+        self.page = page
 
+    def __repr__(self):
+        return f"PDFChunk(source={self.source!r}, tokens={self.tokens}, page={self.page})"
 
 
 class Document:
@@ -57,8 +58,7 @@ class Document:
     def add_chunk(self, chunk):
         if chunk.is_too_large(self.max_chunk_tokens):
             raise ChunkTooLargeError(
-                f"Чанк чрезмерно большой: {chunk.tokens} токенов "
-                f"при лимите {self.max_chunk_tokens}"
+                f"Чанк чрезмерно большой: {chunk.tokens} токенов при лимите {self.max_chunk_tokens}"
             )
         self._chunks.append(chunk)
 
@@ -70,18 +70,18 @@ class Document:
         return len(self._chunks)
 
     def __repr__(self):
-        return (f"Document(name={self.name!r}, chunks={self.chunk_count}, "
-                f"tokens={self.total_tokens()})")
+        return (
+            f"Document(name={self.name!r}, chunks={self.chunk_count}, tokens={self.total_tokens()})"
+        )
 
     def __len__(self):
         return len(self._chunks)
-    
+
     def __contains__(self, chunk):
         return chunk in self._chunks
-    
+
     def __getitem__(self, index):
         return self._chunks[index]
-    
+
     def __iter__(self):
         return iter(self._chunks)
-

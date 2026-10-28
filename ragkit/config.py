@@ -5,6 +5,7 @@
     from ragkit.config import get_settings
     settings = get_settings()
 """
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -17,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 class LLMSettings(BaseModel):
     """Группа настроек модели: APP_LLM__MODEL, APP_LLM__TIMEOUT."""
+
     model: str = "claude-sonnet-5-5"
     timeout: float = 30.0
 
@@ -27,12 +29,12 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         env_prefix="APP_",
         env_nested_delimiter="__",
-        env_ignore_empty=True,        # пустые строки из .env.example → умолчание
+        env_ignore_empty=True,  # пустые строки из .env.example → умолчание
         extra="ignore",
-        hide_input_in_errors=True,    # ключ не попадёт в текст ValidationError
+        hide_input_in_errors=True,  # ключ не попадёт в текст ValidationError
     )
 
-    api_key: SecretStr                        # обязательно: без него не стартуем
+    api_key: SecretStr  # обязательно: без него не стартуем
     database_url: str = "sqlite:///dev.db"
     max_retries: int = 3
     debug: bool = False

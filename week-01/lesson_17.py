@@ -4,23 +4,25 @@ class Person:
         self.name = name
         self.age = age
         self.city = city
+
     def greet(self):
         return f"Привет {self.name} из города {self.city}"
+
     def is_adult(self):
         return self.age >= 18
+
     def __repr__(self):
         return f"Person(name={self.name!r}, age={self.age}, city={self.city!r})"
 
 
-p = Person ("Дима", 55, "Москва")
-p1 = Person ("Дима", 27, "Москва")
-p2 = Person ("Диана", 28, "Москва")
-print (p.city)
-print (p.greet())
-print (p.is_adult())
-print (p)
+p = Person("Дима", 55, "Москва")
+p1 = Person("Дима", 27, "Москва")
+p2 = Person("Диана", 28, "Москва")
+print(p.city)
+print(p.greet())
+print(p.is_adult())
+print(p)
 print([p1, p2])
-
 
 
 # 3
@@ -44,24 +46,22 @@ class BankAccount:
         if amount <= 0:
             raise ValueError(f"Сумма снятия должна быть больше нуля, получено: {amount}")
         if amount > self._balance:
-            raise ValueError(
-                f"Недостаточно средств: на счёте {self._balance}, запрошено {amount}"
-            )
+            raise ValueError(f"Недостаточно средств: на счёте {self._balance}, запрошено {amount}")
         self._balance -= amount
 
 
 # --- Успешные сценарии ---
 acc = BankAccount("Dmitriy")
-print(acc.owner, acc.balance)        # Dmitriy 0
+print(acc.owner, acc.balance)  # Dmitriy 0
 
 acc.deposit(100)
-print("После пополнения:", acc.balance)   # 100
+print("После пополнения:", acc.balance)  # 100
 
 acc.withdraw(30)
-print("После снятия:", acc.balance)       # 70
+print("После снятия:", acc.balance)  # 70
 
 acc.withdraw(70)
-print("Сняли всё:", acc.balance)          # 0
+print("Сняли всё:", acc.balance)  # 0
 
 # --- Ошибочные сценарии ---
 try:
@@ -90,11 +90,11 @@ except ValueError as e:
     print("Ошибка:", e)
 
 try:
-    acc.balance = 1_000_000   # property только для чтения
+    acc.balance = 1_000_000  # property только для чтения
 except AttributeError as e:
     print("Ошибка:", e)
 
-print("Итоговый баланс:", acc.balance)    # 0 — ошибки баланс не испортили
+print("Итоговый баланс:", acc.balance)  # 0 — ошибки баланс не испортили
 
 
 # 4
@@ -107,15 +107,16 @@ class Chunk:
     @property
     def tokens(self):
         return len(self.text.split())
-    
+
     def preview(self, n=50):
         return self.text[:n] + "..." if len(self.text) > n else self.text
-    
+
     def is_too_large(self, max_tokens=500):
         return self.tokens > max_tokens
-    
+
     def __repr__(self):
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"
+
 
 c = Chunk("третий", "doc.pdf")
 print(c.tokens)
@@ -124,8 +125,8 @@ print(c)
 a = Chunk("первый", "doc.pdf")
 b = Chunk("второй", "doc.pdf")
 a.metadata["page"] = 3
-print(a.metadata)    # {'page': 3}
-print(b.metadata)    # {} — должно быть пусто
+print(a.metadata)  # {'page': 3}
+print(b.metadata)  # {} — должно быть пусто
 
 long_chunk = Chunk("слово " * 600, "big.pdf")
 print(long_chunk.preview())
@@ -136,6 +137,8 @@ print(c.is_too_large())
 # 5
 class ChunkTooLargeError(ValueError):
     """Чанк превышает допустимый размер."""
+
+
 class Document:
     def __init__(self, name, max_chunk_tokens=50):
         self.name = name
@@ -145,8 +148,7 @@ class Document:
     def add_chunk(self, chunk):
         if chunk.is_too_large(self.max_chunk_tokens):
             raise ChunkTooLargeError(
-                f"Чанк слишком большой: {chunk.tokens} токенов "
-                f"при лимите {self.max_chunk_tokens}"
+                f"Чанк слишком большой: {chunk.tokens} токенов при лимите {self.max_chunk_tokens}"
             )
         self._chunks.append(chunk)
 
@@ -158,8 +160,9 @@ class Document:
         return len(self._chunks)
 
     def __repr__(self):
-        return (f"Document(name={self.name!r}, chunks={self.chunk_count}, "
-                f"tokens={self.total_tokens()})")
+        return (
+            f"Document(name={self.name!r}, chunks={self.chunk_count}, tokens={self.total_tokens()})"
+        )
 
 
 doc = Document("Руководство", max_chunk_tokens=20)
@@ -205,19 +208,18 @@ class Chunk:
 
     def __repr__(self):
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"
+
+
 x = Chunk("привет", "doc.pdf")
 y = Chunk("привет", "doc.pdf")
 
-print(x == y)    # True  — поля одинаковые
-print(x is y)    # False — но это два разных объекта
+print(x == y)  # True  — поля одинаковые
+print(x is y)  # False — но это два разных объекта
 
 y.metadata["page"] = 1
-print(x == y)    # False — metadata теперь отличается
+print(x == y)  # False — metadata теперь отличается
 
-print(Chunk("привет", "doc.pdf") == Chunk("пока", "doc.pdf"))   # False
-
-
-
+print(Chunk("привет", "doc.pdf") == Chunk("пока", "doc.pdf"))  # False
 
 
 # 7
@@ -227,6 +229,7 @@ class Counter:
     def __init__(self):
         self.count += 1
 
+
 a = Counter()
 b = Counter()
-print(a.count, b.count, Counter.count) # Будет выведено 1 1 и 0
+print(a.count, b.count, Counter.count)  # Будет выведено 1 1 и 0

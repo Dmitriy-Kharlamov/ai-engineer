@@ -25,7 +25,7 @@ print(first, rest, last)
 # 4
 results = [("BERT", 0.87), ("GPT-4", 0.94), ("T5", 0.79), ("Llama", 0.88)]
 for name, score in results:
-    print(f"{name}: {score*100:.0f}%")
+    print(f"{name}: {score * 100:.0f}%")
 best_name, best_score = results[0]
 
 for name, score in results:

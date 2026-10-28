@@ -11,7 +11,7 @@ class Task:
     is_done: bool = False
     created_at: datetime = field(default_factory=datetime.now)
     done_at: datetime | None = None
-  
+
     def mark_done(self):
         if self.is_done:
             raise TaskAlreadyDoneError(self.task_id)
@@ -24,7 +24,7 @@ class Task:
             "text": self.text,
             "is_done": self.is_done,
             "created_at": self.created_at.isoformat(),
-            "done_at": self.done_at.isoformat() if self.done_at else None
+            "done_at": self.done_at.isoformat() if self.done_at else None,
         }
 
     @classmethod
@@ -34,7 +34,5 @@ class Task:
             text=data["text"],
             is_done=data["is_done"],
             created_at=datetime.fromisoformat(data["created_at"]),
-            done_at=datetime.fromisoformat(data["done_at"]) if data["done_at"] else None
+            done_at=datetime.fromisoformat(data["done_at"]) if data["done_at"] else None,
         )
-
-    

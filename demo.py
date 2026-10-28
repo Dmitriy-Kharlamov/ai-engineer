@@ -1,5 +1,4 @@
-from ragkit import RAGError, ChunkTooLargeError, EmptyIndexError, Chunk, PDFChunk, Document
-
+from ragkit import Chunk, Document, PDFChunk, RAGError
 
 doc = Document("Руководство", max_chunk_tokens=20)
 c1 = Chunk("Python это язык программирования.", "manual.pdf")
@@ -28,5 +27,3 @@ try:
     doc.add_chunk(long_chunk)
 except RAGError as e:
     print("Не добавили:", e)
-
-

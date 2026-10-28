@@ -1,9 +1,10 @@
 # 1 и 5
 # Создайте PDFChunk, наследник Chunk, с дополнительным полем page. Используйте super().__init__(). Переопределите __repr__, чтобы показывалась страница. Проверьте, что .tokens и .preview() работают без переписывания.
 # Добавьте в Chunk метод __lt__ (сравнение по количеству токенов) и отсортируйте список чанков обычным sorted() без key=. Потом добавьте @total_ordering и проверьте, что > и <= тоже заработали.
-from abc import ABC, abstractmethod
 import time
+from abc import ABC, abstractmethod
 from functools import total_ordering
+
 
 @total_ordering
 class Chunk:
@@ -15,33 +16,35 @@ class Chunk:
     @property
     def tokens(self):
         return len(self.text.split())
-    
+
     def preview(self, n=50):
         return self.text[:n] + "..." if len(self.text) > n else self.text
-    
+
     def is_too_large(self, max_tokens=500):
         return self.tokens > max_tokens
-    
+
     def __lt__(self, other):
         if not isinstance(other, Chunk):
             return NotImplemented
         return self.tokens < other.tokens
-    
+
     def __eq__(self, other):
         if not isinstance(other, Chunk):
             return NotImplemented
         return self.tokens == other.tokens
-    
+
     def __repr__(self):
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"
 
 
 class PDFChunk(Chunk):
     def __init__(self, text, source, page, metadata=None):
-        super().__init__(text, source, metadata)   
-        self.page = page    
+        super().__init__(text, source, metadata)
+        self.page = page
+
     def __repr__(self):
-        return f"PDFChunk(source={self.source!r}, tokens={self.tokens}, page={self.page})" 
+        return f"PDFChunk(source={self.source!r}, tokens={self.tokens}, page={self.page})"
+
 
 long_chunk = PDFChunk("слово " * 600, "big.pdf", 1)
 a = Chunk("первый", "doc.pdf")
@@ -58,16 +61,17 @@ print(b > c)
 print(sorted([b, a, d, c]))
 
 
-
 # 2
 # Проверьте isinstance и issubclass на своих классах. Убедитесь, что PDFChunk проходит проверку isinstance(x, Chunk), а обычный Chunk не проходит isinstance(x, PDFChunk). Объясните в комментарии, почему так.
 
-print(isinstance(a, PDFChunk))    # False, потому что a относится к Chunk
+print(isinstance(a, PDFChunk))  # False, потому что a относится к Chunk
 print(isinstance(long_chunk, PDFChunk))  # True, потому что long_chunk относится к PDFChunk
-print(isinstance(a, Chunk)) # True, потому что a относится к Chunk
-print(isinstance(long_chunk, Chunk)) # True, потому что long_chunk относится к PDFChunk, а PDFChunk наследник Chunk 
-print(issubclass(PDFChunk, Chunk))   # True, потому что PDFChunk наследник Chunk 
-print(issubclass(Chunk, PDFChunk))  # False, потому что Chunk родитель PDFChunk 
+print(isinstance(a, Chunk))  # True, потому что a относится к Chunk
+print(
+    isinstance(long_chunk, Chunk)
+)  # True, потому что long_chunk относится к PDFChunk, а PDFChunk наследник Chunk
+print(issubclass(PDFChunk, Chunk))  # True, потому что PDFChunk наследник Chunk
+print(issubclass(Chunk, PDFChunk))  # False, потому что Chunk родитель PDFChunk
 
 
 # 3
@@ -81,17 +85,25 @@ print(issubclass(Chunk, PDFChunk))  # False, потому что Chunk роди�
 # Напишите функцию, которая в зависимости от аргумента бросает одно из них. Покажите тремя примерами: перехват конкретного класса, перехват родителя RAGError (ловит оба), и что except ValueError их уже не поймает.
 
 
-class RAGError(Exception): "Ошибка в RAG"
-class ChunkTooLargeError(RAGError): "Чанк превышает допустимый размер"
-class EmptyIndexError(RAGError): "Ошибка в индексе"
+class RAGError(Exception):
+    "Ошибка в RAG"
+
+
+class ChunkTooLargeError(RAGError):
+    "Чанк превышает допустимый размер"
+
+
+class EmptyIndexError(RAGError):
+    "Ошибка в индексе"
+
 
 def check_index(problem):
     if problem == "large":
         raise ChunkTooLargeError("Чанк слишком большой для индекса")
     if problem == "empty":
         raise EmptyIndexError("Ошибка в индексе")
-    else:
-        return "Всё в порядке"
+    return "Всё в порядке"
+
 
 try:
     check_index("large")
@@ -101,7 +113,7 @@ except ChunkTooLargeError as e:
 for problem in ["large", "empty"]:
     try:
         check_index(problem)
-    except RAGError as e:        
+    except RAGError as e:
         print("Пример 2:", type(e).__name__, e)
 
 print(check_index("ok"))
@@ -114,7 +126,6 @@ except ChunkTooLargeError as e:
     print("ValueError пропустил, поймал ChunkTooLargeError:", e)
 
 
-
 # 4
 class Document:
     def __init__(self, name, max_chunk_tokens=50):
@@ -125,8 +136,7 @@ class Document:
     def add_chunk(self, chunk):
         if chunk.is_too_large(self.max_chunk_tokens):
             raise ChunkTooLargeError(
-                f"Чанк слишком большой: {chunk.tokens} токенов "
-                f"при лимите {self.max_chunk_tokens}"
+                f"Чанк слишком большой: {chunk.tokens} токенов при лимите {self.max_chunk_tokens}"
             )
         self._chunks.append(chunk)
 
@@ -138,21 +148,22 @@ class Document:
         return len(self._chunks)
 
     def __repr__(self):
-        return (f"Document(name={self.name!r}, chunks={self.chunk_count}, "
-                f"tokens={self.total_tokens()})")
+        return (
+            f"Document(name={self.name!r}, chunks={self.chunk_count}, tokens={self.total_tokens()})"
+        )
 
     def __len__(self):
         return len(self._chunks)
-    
+
     def __contains__(self, chunk):
         return chunk in self._chunks
-    
+
     def __getitem__(self, index):
         return self._chunks[index]
-    
+
     def __iter__(self):
         return iter(self._chunks)
-    
+
 
 doc = Document("Руководство", max_chunk_tokens=20)
 
@@ -174,9 +185,9 @@ for chunk in doc:
 print(doc)
 
 
-
 # 6
 # Напишите контекстный менеджер Timer, который печатает время выполнения блока. Проверьте на чём-нибудь медленном, например на цикле в миллион итераций.
+
 
 # Отдельно проверьте, что __exit__ срабатывает даже при исключении внутри блока.
 class Timer:
@@ -186,6 +197,7 @@ class Timer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         print(f"Заняло {time.time() - self.start:.2f} сек")
+
 
 with Timer():
     total = 0
@@ -206,7 +218,7 @@ class Silencer:
 
     def __exit__(self, exc_type, exc_value, traceback):
         print(f"Проглотил: {exc_type.__name__}")
-        return True          # ← вот оно
+        return True  # ← вот оно
 
 
 with Silencer():
@@ -220,10 +232,12 @@ print("Мы сюда дошли, хотя выше было исключение
 
 # Попробуйте создать объект BaseRetriever напрямую и посмотрите, что произойдёт.
 
+
 class BaseRetriever(ABC):
     @abstractmethod
     def search(self, query):
         pass
+
 
 class DenseRetriever(BaseRetriever):
     def search(self, query):
@@ -232,12 +246,12 @@ class DenseRetriever(BaseRetriever):
 
 class KeywordRetriever(BaseRetriever):
     def search(self, query):
-        return ["keyword результат"]  
-
+        return ["keyword результат"]
 
 
 def show_results(retriever, query):
     print(retriever.search(query))
+
 
 show_results(DenseRetriever(), "что такое RAG?")
 show_results(KeywordRetriever(), "что такое RAG?")
@@ -247,7 +261,6 @@ try:
     BaseRetriever()
 except TypeError as e:
     print("BaseRetriever():", e)
-
 
 
 # 8
@@ -265,10 +278,10 @@ class C(B):
     pass
 
 
-print(C().hello())          # B + A
-print(isinstance(C(), A))   # True
-print(issubclass(C, A))     # True
-print(C.__mro__)            # порядок поиска методов: C -> B -> A -> object
+print(C().hello())  # B + A
+print(isinstance(C(), A))  # True
+print(issubclass(C, A))  # True
+print(C.__mro__)  # порядок поиска методов: C -> B -> A -> object
 
 # Почему так:
 # 1. У C своего hello нет. Python ищет метод по цепочке C -> B -> A

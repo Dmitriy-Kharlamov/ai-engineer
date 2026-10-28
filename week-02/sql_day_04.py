@@ -30,20 +30,24 @@ CREATE TABLE IF NOT EXISTS chunks (
 
 cur.executemany(
     "INSERT INTO documents (id, title, source, tokens) VALUES (?, ?, ?, ?)",
-    [(1, "Attention is all you need", "arxiv", 8400),
-     (2, "BERT", "arxiv", 7200),
-     (3, "Внутренний регламент", "confluence", 1500),
-     (4, "Пустой черновик", "confluence", 0)],
+    [
+        (1, "Attention is all you need", "arxiv", 8400),
+        (2, "BERT", "arxiv", 7200),
+        (3, "Внутренний регламент", "confluence", 1500),
+        (4, "Пустой черновик", "confluence", 0),
+    ],
 )
 
 cur.executemany(
     "INSERT INTO chunks (document_id, text, tokens) VALUES (?, ?, ?)",
-    [(1, "Hello", 50),
-     (1, "How are you", 2000),
-     (1, "I'm fine", 3000),
-     (2, "I'm too", 40),
-     (2, "Good", 70),
-     (3, "Thank you", 5000)],
+    [
+        (1, "Hello", 50),
+        (1, "How are you", 2000),
+        (1, "I'm fine", 3000),
+        (2, "I'm too", 40),
+        (2, "Good", 70),
+        (3, "Thank you", 5000),
+    ],
 )
 conn.commit()
 
@@ -77,9 +81,9 @@ conn.commit()
 # 4. Транзакция с откатом
 show("до транзакции", "SELECT id, tokens FROM chunks")
 try:
-    cur.execute("UPDATE chunks SET tokens = tokens + 1000 WHERE id = 2")   # изменение 1
-    raise RuntimeError("сбой посередине транзакции")                       # имитация ошибки
-    cur.execute("UPDATE chunks SET tokens = tokens + 1000 WHERE id = 3")   # изменение 2
+    cur.execute("UPDATE chunks SET tokens = tokens + 1000 WHERE id = 2")  # изменение 1
+    raise RuntimeError("сбой посередине транзакции")  # имитация ошибки
+    cur.execute("UPDATE chunks SET tokens = tokens + 1000 WHERE id = 3")  # изменение 2
     conn.commit()
 except RuntimeError as e:
     print("ошибка:", e, "→ откат")
@@ -98,11 +102,13 @@ show("после commit", "SELECT id, tokens FROM chunks")
 #    незафиксированные изменения — они в файл не попадают.
 other = sqlite3.connect(DB_PATH)
 other.execute("UPDATE chunks SET tokens = 0 WHERE id = 2")
-other.close()                                      # ни commit, ни rollback
+other.close()  # ни commit, ни rollback
 
 check = sqlite3.connect(DB_PATH)
-print("\nчанк 2 после close без commit:",
-      check.execute("SELECT id, tokens FROM chunks WHERE id = 2").fetchone())
+print(
+    "\nчанк 2 после close без commit:",
+    check.execute("SELECT id, tokens FROM chunks WHERE id = 2").fetchone(),
+)
 check.close()
 
 

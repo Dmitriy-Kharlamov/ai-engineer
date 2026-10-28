@@ -1,5 +1,5 @@
-import json
 import csv
+import json
 from pathlib import Path
 
 # 1
@@ -11,24 +11,23 @@ with open("notes.txt", "w", encoding="utf-8") as f:
     f.write("Пятая строка\n")
 
 # Чтение файла целиком
-with open("notes.txt", "r", encoding="utf-8") as f:
+with open("notes.txt", encoding="utf-8") as f:
     content = f.read()
     print("Чтение целиком:")
     print(content)
 
 # Чтение файла как список строк
-with open("notes.txt", "r", encoding="utf-8") as f:
+with open("notes.txt", encoding="utf-8") as f:
     lines = f.readlines()
     print("Чтение как список строк:")
     for line in lines:
         print(line.strip())
 
 # Чтение файла построчно
-with open("notes.txt", "r", encoding="utf-8") as f:
+with open("notes.txt", encoding="utf-8") as f:
     print("Чтение построчно:")
     for line in f:
         print(line.strip())
-
 
 
 # 2
@@ -36,7 +35,7 @@ with open("notes.txt", "a", encoding="utf-8") as f:
     f.write("Шестая строка\n")
     f.write("Седьмая строка\n")
 
-with open("notes.txt", "r", encoding="utf-8") as f:
+with open("notes.txt", encoding="utf-8") as f:
     content = f.read()
     print("Чтение целиком:")
     print(content)
@@ -45,14 +44,15 @@ with open("notes.txt", "r", encoding="utf-8") as f:
 # 3
 def count_lines(path):
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             return len(f.readlines())
     except FileNotFoundError:
         print(f"Файл {path} не найден")
         return 0
-    
-print(count_lines("notes.txt"))    # существующий
-print(count_lines("нет.txt"))      # отсутствующий
+
+
+print(count_lines("notes.txt"))  # существующий
+print(count_lines("нет.txt"))  # отсутствующий
 
 
 # 4
@@ -107,7 +107,7 @@ missing = base / "config_missing.json"
 print("1. Нормальный:", load_config(good))
 print("2. Битый:", load_config(bad))
 print("3. Нет файла:", load_config(missing))
-    
+
 
 # 6
 # Сохраните список словарей в формате JSON Lines, затем прочитайте обратно и выведите. Это основа работы с датасетами.
@@ -122,7 +122,7 @@ with open("chunks.jsonl", "w", encoding="utf-8") as f:
 
 with open("chunks.jsonl", encoding="utf-8") as f:
     items = [json.loads(line) for line in f]
-print (items)
+print(items)
 
 
 # 7

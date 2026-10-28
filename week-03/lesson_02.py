@@ -28,11 +28,13 @@ async def say(name):
 
 async def task1():
     print("\n1. Корутина без await")
-    coro = say("без await")          # объект создан, тело НЕ выполнилось
+    coro = say("без await")  # объект создан, тело НЕ выполнилось
     print("   после say('без await'):", coro)
-    del coro                         # объект выброшен → предупреждение
+    del coro  # объект выброшен → предупреждение
     gc.collect()
     await say("с await")
+
+
 # Вывод: строки «say('без await') выполнилась» нет вообще; вместо неё —
 #   RuntimeWarning: coroutine 'say' was never awaited (в stderr, в момент,
 #   когда объект корутины уничтожается). Вызов async-функции лишь создаёт
@@ -72,6 +74,8 @@ async def task2(client):
     print(f"   в цикле с await: {t_seq:.2f} с")
     print(f"   gather:          {t_gather:.2f} с")
     print(f"   TaskGroup:       {t_tg:.2f} с")
+
+
 # В цикле каждый await ждёт ответа, и только потом цикл создаёт следующий
 #   запрос: 10 × (1 с задержки + сеть) ≈ 10+ с. gather и TaskGroup сначала
 #   запускают все 10 корутин; каждая отправляет запрос и на await отдаёт
@@ -91,9 +95,9 @@ async def run_mixed(client, slow_kind):
     async def job(i):
         if i == 0:
             if slow_kind == "time.sleep":
-                time.sleep(3)                         # блокирует ВЕСЬ цикл
+                time.sleep(3)  # блокирует ВЕСЬ цикл
             elif slow_kind == "asyncio.sleep":
-                await asyncio.sleep(3)                # отдаёт управление
+                await asyncio.sleep(3)  # отдаёт управление
             elif slow_kind == "to_thread":
                 await asyncio.to_thread(time.sleep, 3)  # блокирует только поток
         await fetch(client, DELAY_URL)
@@ -102,8 +106,10 @@ async def run_mixed(client, slow_kind):
     await asyncio.gather(*[job(i) for i in range(N)])
     total = stamp(start)
     others = statistics.median(finished[i] for i in range(1, N))
-    print(f"   {slow_kind:14}: всего {total:.2f} с | "
-          f"задача 0 — {finished[0]:.2f} с | остальные 9 — медиана {others:.2f} с")
+    print(
+        f"   {slow_kind:14}: всего {total:.2f} с | "
+        f"задача 0 — {finished[0]:.2f} с | остальные 9 — медиана {others:.2f} с"
+    )
     return total, others
 
 
@@ -112,6 +118,8 @@ async def task3_4(client):
     await run_mixed(client, "time.sleep")
     await run_mixed(client, "asyncio.sleep")
     await run_mixed(client, "to_thread")
+
+
 # Общее время во всех трёх вариантах ≈ 4 с: задаче 0 нужно 3 с паузы и 1 с
 #   запроса, а gather ждёт самую медленную. Разница видна по ОСТАЛЬНЫМ девяти:
 # time.sleep(3): задача 0 запускается первой и держит единственный поток
@@ -150,8 +158,10 @@ async def task5(client):
                 in_flight -= 1
 
     expected = total_requests / limit * 1.0
-    print(f"   прогноз с семафором: {total_requests} / {limit} = "
-          f"{total_requests // limit} волн × ~1 с ≈ {expected:.0f}+ с")
+    print(
+        f"   прогноз с семафором: {total_requests} / {limit} = "
+        f"{total_requests // limit} волн × ~1 с ≈ {expected:.0f}+ с"
+    )
 
     start = time.perf_counter()
     await asyncio.gather(*[fetch_limited() for _ in range(total_requests)])
@@ -164,6 +174,8 @@ async def task5(client):
     print(f"   с семафором на {limit}: {t_sem:.2f} с (одновременно было максимум {max_in_flight})")
     print(f"   без семафора:     {t_free:.2f} с")
     assert max_in_flight == limit
+
+
 # С семафором внутри блока не больше 5 запросов: 30 запросов идут шестью
 #   волнами по ~1 с → ≈ 6 с, что и показал замер. Без семафора все 30 летят
 #   сразу → ≈ 1 с.
@@ -184,18 +196,20 @@ TRICKLE_SECONDS = 10
 async def trickle_handler(reader, writer):
     """Отвечает на любой запрос телом из 10 байт — по байту раз в секунду."""
     try:
-        await reader.readuntil(b"\r\n\r\n")             # дочитали заголовки запроса
-        writer.write(b"HTTP/1.1 200 OK\r\n"
-                     b"Content-Type: text/plain\r\n"
-                     b"Content-Length: %d\r\n"
-                     b"Connection: close\r\n\r\n" % TRICKLE_SECONDS)
+        await reader.readuntil(b"\r\n\r\n")  # дочитали заголовки запроса
+        writer.write(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: text/plain\r\n"
+            b"Content-Length: %d\r\n"
+            b"Connection: close\r\n\r\n" % TRICKLE_SECONDS
+        )
         await writer.drain()
         for _ in range(TRICKLE_SECONDS):
             await asyncio.sleep(1)
             writer.write(b"x")
             await writer.drain()
     except (ConnectionError, asyncio.IncompleteReadError):
-        pass                                             # клиент ушёл — это нормально
+        pass  # клиент ушёл — это нормально
     finally:
         writer.close()
 
@@ -211,8 +225,10 @@ async def task6():
         start = time.perf_counter()
         try:
             r = await client.get(url, timeout=2)
-            print(f"   httpx timeout=2: УСПЕХ через {stamp(start):.1f} с, "
-                  f"тело {r.content!r} — таймаут не сработал")
+            print(
+                f"   httpx timeout=2: УСПЕХ через {stamp(start):.1f} с, "
+                f"тело {r.content!r} — таймаут не сработал"
+            )
         except httpx.TimeoutException as e:
             print(f"   httpx timeout=2: {type(e).__name__} через {stamp(start):.1f} с")
 
@@ -223,6 +239,8 @@ async def task6():
             print(f"   asyncio.timeout(3): успех через {stamp(start):.1f} с")
         except TimeoutError:
             print(f"   asyncio.timeout(3): TimeoutError через {stamp(start):.1f} с")
+
+
 # timeout=2 в httpx (как и в requests) — это предел ожидания ОДНОЙ порции
 #   данных: «между двумя пакетами не больше 2 с». Сервер шлёт байт каждую
 #   секунду, пауза ни разу не превышает 2 с — и запрос благополучно живёт
@@ -258,13 +276,12 @@ async def task7():
         await asyncio.gather(*[worker(i, done) for i in range(5)])
     except ValueError as e:
         print(f"   → исключение {e!r}; к этому моменту завершились: {done}")
-    await asyncio.sleep(0.5)          # даём «осиротевшим» задачам доработать
+    await asyncio.sleep(0.5)  # даём «осиротевшим» задачам доработать
     print(f"   → а через 0.5 с завершились уже: {done} — их результаты никто не забрал")
 
     print("   б) gather с return_exceptions=True")
     done = []
-    results = await asyncio.gather(*[worker(i, done) for i in range(5)],
-                                   return_exceptions=True)
+    results = await asyncio.gather(*[worker(i, done) for i in range(5)], return_exceptions=True)
     print(f"   → вернулось: {results}")
 
     print("   в) TaskGroup")
@@ -284,6 +301,8 @@ async def task7():
                 tg.create_task(worker(i, done))
     except Exception as e:
         print(f"   → {type(e).__name__}: {e}")
+
+
 # а) gather бросил ValueError сразу, на 0.2 с, когда успела только задача 0.
 #    Но задачи 2, 3, 4 НЕ остановились: они дорабатывают в фоне, и их
 #    результаты (и возможные ошибки) теряются — никто их больше не ждёт.
@@ -323,6 +342,8 @@ async def task8():
     print("   порядок готовности:", order)
     assert order != list(range(10))
     assert order == sorted(range(10), key=lambda i: delays[i])
+
+
 # Задачи приходят в порядке готовности — по возрастанию задержки, а не в
 #   порядке запуска. gather вернул бы всё разом через 2 с (по самой медленной)
 #   и в порядке аргументов.
@@ -350,7 +371,7 @@ async def task9():
     t_seq = stamp(start)
 
     async def as_coroutine():
-        return sum_squares()                 # ни одного await внутри
+        return sum_squares()  # ни одного await внутри
 
     start = time.perf_counter()
     await asyncio.gather(*[as_coroutine() for _ in range(4)])
@@ -361,16 +382,17 @@ async def task9():
     t_thread = stamp(start)
 
     with ProcessPoolExecutor(max_workers=4) as pool:
-        await loop.run_in_executor(pool, sum_squares, 10)   # прогрев: запуск процессов
+        await loop.run_in_executor(pool, sum_squares, 10)  # прогрев: запуск процессов
         start = time.perf_counter()
-        await asyncio.gather(*[loop.run_in_executor(pool, sum_squares)
-                               for _ in range(4)])
+        await asyncio.gather(*[loop.run_in_executor(pool, sum_squares) for _ in range(4)])
         t_proc = stamp(start)
 
     print(f"   последовательно:     {t_seq:.2f} с")
     print(f"   gather:              {t_gather:.2f} с")
     print(f"   asyncio.to_thread:   {t_thread:.2f} с")
     print(f"   ProcessPoolExecutor: {t_proc:.2f} с")
+
+
 # Последовательно — 4 × время одной задачи, база для сравнения.
 # gather — столько же: в sum_squares нет ни одного await, корутина ни разу не
 #   отдаёт управление, и цикл выполняет четыре задачи по очереди. asyncio
@@ -417,7 +439,7 @@ async def main():
     timeout = httpx.Timeout(connect=5.0, read=30.0, write=10.0, pool=30.0)
     limits = httpx.Limits(max_connections=50, max_keepalive_connections=20)
     async with httpx.AsyncClient(timeout=timeout, limits=limits) as client:
-        await fetch(client, f"{BASE}/get")      # прогрев: соединение и TLS
+        await fetch(client, f"{BASE}/get")  # прогрев: соединение и TLS
         await task2(client)
         await task3_4(client)
         await task5(client)
@@ -427,5 +449,5 @@ async def main():
     await task9()
 
 
-if __name__ == "__main__":         # обязательно: ProcessPoolExecutor на macOS
-    asyncio.run(main())            # запускает дочерние процессы через spawn
+if __name__ == "__main__":  # обязательно: ProcessPoolExecutor на macOS
+    asyncio.run(main())  # запускает дочерние процессы через spawn

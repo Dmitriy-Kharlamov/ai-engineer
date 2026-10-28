@@ -14,9 +14,11 @@ CREATE TABLE IF NOT EXISTS documents (
 
 cur.executemany(
     "INSERT INTO documents (title, source, tokens) VALUES (?, ?, ?)",
-    [("Attention is all you need", "arxiv", 8400),
-     ("BERT", "arxiv", 7200),
-     ("Внутренний регламент", "confluence", 1500)]
+    [
+        ("Attention is all you need", "arxiv", 8400),
+        ("BERT", "arxiv", 7200),
+        ("Внутренний регламент", "confluence", 1500),
+    ],
 )
 conn.commit()
 

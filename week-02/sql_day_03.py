@@ -14,7 +14,7 @@ from pathlib import Path
 
 DB_PATH = Path(__file__).parent / "library_day3.db"
 if DB_PATH.exists():
-    DB_PATH.unlink()                    # каждый запуск — с чистой базы
+    DB_PATH.unlink()  # каждый запуск — с чистой базы
 
 conn = sqlite3.connect(DB_PATH)
 cur = conn.cursor()
@@ -28,8 +28,7 @@ CREATE TABLE chunks (
 )
 """)
 
-rows = [(random.randint(1, 4), f"чанк {i}", random.randint(10, 500))
-        for i in range(200_000)]
+rows = [(random.randint(1, 4), f"чанк {i}", random.randint(10, 500)) for i in range(200_000)]
 cur.executemany("INSERT INTO chunks (document_id, text, tokens) VALUES (?, ?, ?)", rows)
 conn.commit()
 
@@ -82,15 +81,13 @@ def load_unique(data):
 
 
 print("\nпервая загрузка, строк:", load_unique(rows))
-print("повторная загрузка, строк:", load_unique(rows))   # те же данные ещё раз
+print("повторная загрузка, строк:", load_unique(rows))  # те же данные ещё раз
 
 # Для сравнения: обычный INSERT на дубле падает
 try:
-    cur.execute("INSERT INTO chunks_unique (document_id, text, tokens) VALUES (?, ?, ?)",
-                rows[0])
+    cur.execute("INSERT INTO chunks_unique (document_id, text, tokens) VALUES (?, ?, ?)", rows[0])
 except sqlite3.IntegrityError as e:
     print("обычный INSERT дубля:", e)
 
 # Бонус: UNIQUE сам создал индекс — посмотри на план
-print("план на chunks_unique:",
-      plan("SELECT COUNT(*) FROM chunks_unique WHERE document_id = 3"))
+print("план на chunks_unique:", plan("SELECT COUNT(*) FROM chunks_unique WHERE document_id = 3"))

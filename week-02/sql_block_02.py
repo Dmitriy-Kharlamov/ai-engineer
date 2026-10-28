@@ -31,25 +31,28 @@ CREATE TABLE chunks (
 )
 """)
 
-cur.executemany("INSERT INTO documents VALUES (?, ?, ?, ?)", [
-    (1, "Attention is all you need", "arxiv", 8700),
-    (2, "BERT", "arxiv", 7200),
-    (3, "Внутренний регламент", "confluence", 1500),
-    (4, "Пустой черновик", "confluence", 0),
-    (5, "README ragkit", "github", None),
-    (6, "Гайд по деплою", "github", 3000),
-])
+cur.executemany(
+    "INSERT INTO documents VALUES (?, ?, ?, ?)",
+    [
+        (1, "Attention is all you need", "arxiv", 8700),
+        (2, "BERT", "arxiv", 7200),
+        (3, "Внутренний регламент", "confluence", 1500),
+        (4, "Пустой черновик", "confluence", 0),
+        (5, "README ragkit", "github", None),
+        (6, "Гайд по деплою", "github", 3000),
+    ],
+)
 
 CHUNKS = [
     (1, "Введение", 1000, "Vaswani"),
-    (1, "Архитектура", 1500, "Vaswani"),      # ничья с Self-attention (1500)
+    (1, "Архитектура", 1500, "Vaswani"),  # ничья с Self-attention (1500)
     (1, "Self-attention", 1500, None),
     (1, "Multi-head", 1800, "Shazeer"),
     (1, "Эксперименты", 2000, None),
     (1, "Выводы", 900, "Parmar"),
     (2, "Pre-training", 3000, "Devlin"),
     (2, "Fine-tuning", 3500, None),
-    (2, "Pre-training", 3000, "Devlin"),      # явный дубликат (2, Pre-training)
+    (2, "Pre-training", 3000, "Devlin"),  # явный дубликат (2, Pre-training)
     (3, "Правила доступа", 1500, None),
     (5, "Установка", 400, "Dmitriy"),
     (5, "Примеры", 600, None),
@@ -57,14 +60,18 @@ CHUNKS = [
     (None, "Сирота без документа", 300, None),
 ]
 
-random.seed(42)                                # фиксированный seed → воспроизводимо
-rows = [(doc, text, tokens, author,
-         round(random.random(), 3), round(random.random(), 3))
-        for doc, text, tokens, author in CHUNKS]
-cur.executemany("""
+random.seed(42)  # фиксированный seed → воспроизводимо
+rows = [
+    (doc, text, tokens, author, round(random.random(), 3), round(random.random(), 3))
+    for doc, text, tokens, author in CHUNKS
+]
+cur.executemany(
+    """
     INSERT INTO chunks (document_id, text, tokens, author, dense_score, sparse_score)
     VALUES (?, ?, ?, ?, ?, ?)
-""", rows)
+""",
+    rows,
+)
 conn.commit()
 
 
@@ -127,8 +134,9 @@ Q2 = """
     FROM chunks
 """
 show("2. три функции ранжирования", Q2)
-Q2_STABLE = Q2.replace("ROW_NUMBER() OVER (ORDER BY tokens DESC)",
-                       "ROW_NUMBER() OVER (ORDER BY tokens DESC, id)")
+Q2_STABLE = Q2.replace(
+    "ROW_NUMBER() OVER (ORDER BY tokens DESC)", "ROW_NUMBER() OVER (ORDER BY tokens DESC, id)"
+)
 show("2. ROW_NUMBER с вторым ключом id", Q2_STABLE)
 # Ничья: три чанка по 1500 токенов (Архитектура, Self-attention, Правила доступа).
 #   ROW_NUMBER = 7, 8, 9 — всегда уникален, просто нумерует строки подряд.
@@ -187,7 +195,7 @@ Q4 = """
 """
 show("4. LAG и разница", Q4)
 for doc_id, cid, text, tokens, prev, delta in cur.execute(Q4).fetchall():
-    if prev is None:                      # первый чанк документа
+    if prev is None:  # первый чанк документа
         assert delta == tokens
 # LAG(tokens) у первого чанка документа — None: строки выше в этом окне нет.
 # LAG(tokens, 1, 0): сдвиг 1, а вместо отсутствующей строки — 0. Поэтому
@@ -209,7 +217,7 @@ Q5 = """
 """
 show("5. кумулятивная сумма: RANGE против ROWS", Q5)
 r5 = cur.execute(Q5).fetchall()
-assert any(row[3] != row[4] for row in r5)   # обязаны разойтись
+assert any(row[3] != row[4] for row in r5)  # обязаны разойтись
 # Разошлись на ничьих:
 #   документ 1, два чанка по 1500 (id 2 и 3): RANGE 4900, 4900; ROWS 3400, 4900.
 #   документ 2, два чанка по 3000 (id 7 и 9): RANGE 6000, 6000; ROWS 3000, 6000.
@@ -235,9 +243,9 @@ Q6 = """
 """
 show("6. скользящее среднее (документ 1)", Q6)
 r6 = {row[1]: row[3] for row in cur.execute(Q6)}
-assert r6[1] == 1000 / 1                     # начало: только сам чанк
-assert r6[2] == (1000 + 1500) / 2            # две строки
-assert r6[4] == (1500 + 1500 + 1800) / 3     # середина: id 2, 3, 4
+assert r6[1] == 1000 / 1  # начало: только сам чанк
+assert r6[2] == (1000 + 1500) / 2  # две строки
+assert r6[4] == (1500 + 1500 + 1800) / 3  # середина: id 2, 3, 4
 # Ручная проверка:
 #   начало, id 1: строк выше нет, в рамке только он → 1000 / 1 = 1000.
 #   начало, id 2: выше одна строка → (1000 + 1500) / 2 = 1250.

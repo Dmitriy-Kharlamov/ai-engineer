@@ -15,8 +15,8 @@ def best_of(func, *args, runs=7):
 
 # 1
 print("1. Юникод")
-nfc = unicodedata.normalize("NFC", "йод")     # «й» одним символом U+0439
-nfd = "йод"                                   # «и» + комбинирующая краткая U+0306
+nfc = unicodedata.normalize("NFC", "йод")  # «й» одним символом U+0439
+nfd = "йод"  # «и» + комбинирующая краткая U+0306
 
 print(f"{nfc=}  len={len(nfc)}  bytes={nfc.encode('utf-8')}")
 print(f"{nfd=}  len={len(nfd)}  bytes={nfd.encode('utf-8')}")
@@ -33,12 +33,12 @@ assert fixed == nfc and hash(fixed) == hash(nfc)
 # поэтому False и разные хеши → в словаре это два разных ключа.
 # NFC «составляет» и + краткая в один символ й → строки совпадают.
 
-lig = "ﬁ"                                      # лигатура «ﬁ»
+lig = "ﬁ"  # лигатура «ﬁ»
 print(f"\nлигатура: {lig!r} len={len(lig)}")
 print("NFC: ", repr(unicodedata.normalize("NFC", lig)))
 print("NFKC:", repr(unicodedata.normalize("NFKC", lig)))
-assert unicodedata.normalize("NFC", lig) == lig     # NFC не трогает
-assert unicodedata.normalize("NFKC", lig) == "fi"   # NFKC разворачивает в f + i
+assert unicodedata.normalize("NFC", lig) == lig  # NFC не трогает
+assert unicodedata.normalize("NFKC", lig) == "fi"  # NFKC разворачивает в f + i
 # NFC объединяет только канонически равные записи (одна буква — два способа
 # записи). ﬁ и fi — не одно и то же написание, а «совместимые» варианты:
 # это решает только NFKC. Для поискового индекса — NFKC, для показа — NFC.
@@ -47,9 +47,9 @@ assert unicodedata.normalize("NFKC", lig) == "fi"   # NFKC разворачив�
 # 2
 print("\n2. casefold против lower")
 pairs = [
-    ("Straße", "STRASSE"),      # немецкая ß → ss
-    ("λογος", "λογοσ"),         # греческая конечная ς → σ
-    ("ﬁle", "FILE"),       # лигатура ﬁ → fi
+    ("Straße", "STRASSE"),  # немецкая ß → ss
+    ("λογος", "λογοσ"),  # греческая конечная ς → σ
+    ("ﬁle", "FILE"),  # лигатура ﬁ → fi
 ]
 print(f"{'a':<10}{'b':<10}{'lower ==':<10}{'casefold =='}")
 for a, b in pairs:
@@ -73,7 +73,7 @@ def clean_translate(text):
 
 
 def clean_replace(text):
-    for ch in REMOVE:                    # по проходу на каждый символ
+    for ch in REMOVE:  # по проходу на каждый символ
         text = text.replace(ch, "")
     return text
 
@@ -109,24 +109,24 @@ print("\n4. parse_config_line")
 
 def parse_config_line(line):
     """'ключ = значение' → (ключ, значение); без '=' или без ключа → None."""
-    line = line.strip().removeprefix("export ")   # 'export KEY=1' как в .env
-    key, sep, value = line.partition("=")          # режет по ПЕРВОМУ '='
-    if not sep:                                    # '=' не нашлось
+    line = line.strip().removeprefix("export ")  # 'export KEY=1' как в .env
+    key, sep, value = line.partition("=")  # режет по ПЕРВОМУ '='
+    if not sep:  # '=' не нашлось
         return None
     key = key.strip()
-    if not key:                                    # '= значение' — ключа нет
+    if not key:  # '= значение' — ключа нет
         return None
     return key, value.strip()
 
 
 cases = [
-    ("host = localhost",          ("host", "localhost")),        # обычный
+    ("host = localhost", ("host", "localhost")),  # обычный
     ("url=postgres://u:p@h/db?a=1", ("url", "postgres://u:p@h/db?a=1")),  # '=' в значении
-    ("   name   =   ragkit   ",   ("name", "ragkit")),           # пробелы вокруг
-    ("empty =",                   ("empty", "")),                # пустое значение
-    ("просто строка без знака",   None),                         # нет '='
-    ("export TOKEN = abc",        ("TOKEN", "abc")),             # removeprefix
-    ("= orphan",                  None),                         # нет ключа
+    ("   name   =   ragkit   ", ("name", "ragkit")),  # пробелы вокруг
+    ("empty =", ("empty", "")),  # пустое значение
+    ("просто строка без знака", None),  # нет '='
+    ("export TOKEN = abc", ("TOKEN", "abc")),  # removeprefix
+    ("= orphan", None),  # нет ключа
 ]
 for line, expected in cases:
     result = parse_config_line(line)
@@ -137,7 +137,7 @@ for line, expected in cases:
 # из набора {e, x, p, o, r, t, ' '} с края, а не подстроку:
 print("lstrip:      ", repr("export port=1".lstrip("export ")))
 print("removeprefix:", repr("export port=1".removeprefix("export ")))
-assert "export port=1".lstrip("export ") == "=1"         # съел и «port»!
+assert "export port=1".lstrip("export ") == "=1"  # съел и «port»!
 assert "export port=1".removeprefix("export ") == "port=1"
 
 
@@ -155,9 +155,13 @@ assert NUMBER.findall("было 3.14, стало 10 и -2.5") == ["3.14", "10", 
 
 # 5.2 email через fullmatch
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-for addr, ok in [("dmitriy@example.com", True), ("a.b+tag@mail.co.uk", True),
-                 ("без собаки.com", False), ("x@localhost", False),
-                 ("a@b.com лишнее", False)]:
+for addr, ok in [
+    ("dmitriy@example.com", True),
+    ("a.b+tag@mail.co.uk", True),
+    ("без собаки.com", False),
+    ("x@localhost", False),
+    ("a@b.com лишнее", False),
+]:
     got = EMAIL.fullmatch(addr) is not None
     print(f"email {addr!r:24} → {got}")
     assert got == ok
@@ -173,8 +177,12 @@ LOG = re.compile(
 )
 m = LOG.fullmatch("2026-10-19 18:31:07 ERROR ragkit: чанк слишком большой")
 print("лог:", m.groupdict())
-assert m.groupdict() == {"date": "2026-10-19", "time": "18:31:07",
-                         "level": "ERROR", "message": "ragkit: чанк слишком большой"}
+assert m.groupdict() == {
+    "date": "2026-10-19",
+    "time": "18:31:07",
+    "level": "ERROR",
+    "message": "ragkit: чанк слишком большой",
+}
 
 # 5.4 любые пробельные последовательности → один пробел
 messy = "много   пробелов\tи\n\nпереносов  "
@@ -207,12 +215,10 @@ assert noncapturing == ["10-20", "30-40"]
 
 # 6
 print("\n6. Чистка текста из PDF")
-RAW = ("Трансфор-\n"
-       "меры  используют   self-attention.¹ Это\n"
-       "позволяет ﬁксировать зависимости.")
+RAW = "Трансфор-\nмеры  используют   self-attention.¹ Это\nпозволяет ﬁксировать зависимости."
 EXPECTED = "Трансформеры используют self-attention. Это позволяет фиксировать зависимости."
 
-FOOTNOTE = re.compile(r"[¹²³⁰-⁹]+")   # ¹ ² ³ ⁰ ⁴…⁹
+FOOTNOTE = re.compile(r"[¹²³⁰-⁹]+")  # ¹ ² ³ ⁰ ⁴…⁹
 HYPHEN_BREAK = re.compile(r"(\w)-\n(\w)")
 LATIN_LIG_IN_CYRILLIC = re.compile(r"ﬁ(?=[а-яё])", re.IGNORECASE)
 
@@ -264,30 +270,30 @@ def truncate(text, limit):
         return text
     if limit <= 0:
         return ""
-    room = limit - 1                         # одно место отдаём под …
+    room = limit - 1  # одно место отдаём под …
     cut = text[:room]
-    mid_word = not text[room].isspace()      # следующий символ — продолжение слова?
+    mid_word = not text[room].isspace()  # следующий символ — продолжение слова?
     if mid_word and " " in cut:
-        cut = cut[:cut.rindex(" ")]          # откатываемся к концу целого слова
+        cut = cut[: cut.rindex(" ")]  # откатываемся к концу целого слова
     # если пробела нет — первое слово длиннее лимита, режем его как есть
     return cut.rstrip() + ELLIPSIS
 
 
 tests = [
-    ("", 10, ""),                                               # пустая строка
-    ("короткий текст", 50, "короткий текст"),                   # короче лимита
-    ("ровно", 5, "ровно"),                                      # ровно в лимит
-    ("что угодно", 0, ""),                                      # лимит 0
-    ("Трансформеры", 5, "Тран…"),                               # одно длинное слово
+    ("", 10, ""),  # пустая строка
+    ("короткий текст", 50, "короткий текст"),  # короче лимита
+    ("ровно", 5, "ровно"),  # ровно в лимит
+    ("что угодно", 0, ""),  # лимит 0
+    ("Трансформеры", 5, "Тран…"),  # одно длинное слово
     ("Трансформеры используют внимание", 20, "Трансформеры…"),  # не рвём слово
-    ("один два три", 9, "один два…"),                           # граница слова
-    ("один два три", 1, "…"),                                   # место только под …
+    ("один два три", 9, "один два…"),  # граница слова
+    ("один два три", 1, "…"),  # место только под …
 ]
 for text, limit, expected in tests:
     result = truncate(text, limit)
     print(f"truncate({text!r}, {limit}) → {result!r}")
     assert result == expected, (text, limit, result)
-    assert len(result) <= max(limit, 0)      # никогда не длиннее лимита
+    assert len(result) <= max(limit, 0)  # никогда не длиннее лимита
 
 
 # ---------------------------------------------------------------------------

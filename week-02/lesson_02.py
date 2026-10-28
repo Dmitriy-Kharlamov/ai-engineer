@@ -5,7 +5,7 @@ def check(my_func, reference_func, trials=500, low=-50, high=50, max_size=30):
     for _ in range(trials):
         size = random.randint(0, max_size)
         data = [random.randint(low, high) for _ in range(size)]
-        expected = reference_func(data[:])      # копия: функция может менять вход
+        expected = reference_func(data[:])  # копия: функция может менять вход
         actual = my_func(data[:])
         assert actual == expected, f"вход {data}: получил {actual}, ждал {expected}"
     print(f"{my_func.__name__}: {trials} проверок пройдено")
@@ -62,10 +62,10 @@ def check_range_sum(trials=500):
 # Инвариант: перед каждым шагом в items[:write] лежат все ненулевые элементы из items[:read]
 # в изначальном порядке, а в items[write:read] — только 0.
 def move_zeroes(items):
-    write = 0                          # куда положить следующее ненулевое
-    for read in range(len(items)):     # read идёт по всем элементам
+    write = 0  # куда положить следующее ненулевое
+    for read in range(len(items)):  # read идёт по всем элементам
         if items[read] != 0:
-            items[write], items[read] = items[read], items[write]   # поменять местами
+            items[write], items[read] = items[read], items[write]  # поменять местами
             write += 1
     return items
 
@@ -107,12 +107,12 @@ def product_except_self(numbers):
     n = len(numbers)
     result = [1] * n
     left = 1
-    for i in range(n):              # проход слева направо
-        result[i] = left             # произведение всех левее i
+    for i in range(n):  # проход слева направо
+        result[i] = left  # произведение всех левее i
         left *= numbers[i]
     right = 1
     for i in range(n - 1, -1, -1):  # проход справа налево
-        result[i] *= right             # домножаем на произведение всех правее i
+        result[i] *= right  # домножаем на произведение всех правее i
         right *= numbers[i]
     return result
 

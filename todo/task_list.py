@@ -14,7 +14,7 @@ class TaskList:
         self._tasks[task.task_id] = task
         self._next_id += 1
         return task
-    
+
     def get(self, task_id):
         if task_id not in self._tasks:
             raise TaskNotFoundError(task_id)
@@ -43,10 +43,7 @@ class TaskList:
         return total, done, percent
 
     def to_dict(self):
-        return {
-            "next_id": self._next_id,
-            "tasks": [task.to_dict() for task in self.filter()]
-        }
+        return {"next_id": self._next_id, "tasks": [task.to_dict() for task in self.filter()]}
 
     @classmethod
     def from_dict(cls, data):

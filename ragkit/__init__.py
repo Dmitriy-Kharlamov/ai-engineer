@@ -1,2 +1,2 @@
-from .exceptions import RAGError, ChunkTooLargeError, EmptyIndexError
-from .chunking import Chunk, PDFChunk, Document
+from .chunking import Chunk, Document, PDFChunk
+from .exceptions import ChunkTooLargeError, EmptyIndexError, RAGError

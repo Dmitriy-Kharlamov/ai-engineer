@@ -11,7 +11,7 @@ print(raw_number_2)
 print(raw_number_3)
 
 
-# 2 
+# 2
 words = ["трансформер", "токен", "эмбеддинг", "слой", "attention"]
 words_1 = [word for word in words if len(word) > 5]
 print(words_1)

@@ -7,7 +7,6 @@ from .exceptions import (
 from .storage import TaskStorage
 from .task_list import TaskList
 
-
 DATA_FILE = "tasks.json"
 
 

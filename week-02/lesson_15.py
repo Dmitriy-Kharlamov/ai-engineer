@@ -103,10 +103,10 @@ assert np_result[0] != py_result and np_result[0] == 0
 print("\n3. Broadcasting")
 cases = [
     # (форма A, форма B, предсказание)
-    ((3,),   (3,),   "(3,) — формы равны, поэлементно"),
-    ((2, 3), (3,),   "(2, 3) — (3,) считается (1, 3) и растягивается на 2 строки"),
+    ((3,), (3,), "(3,) — формы равны, поэлементно"),
+    ((2, 3), (3,), "(2, 3) — (3,) считается (1, 3) и растягивается на 2 строки"),
     ((2, 3), (2, 1), "(2, 3) — столбец (2, 1) растягивается на 3 столбца"),
-    ((2, 3), (2,),   "ОШИБКА — справа 3 против 2, ни одна не равна 1"),
+    ((2, 3), (2,), "ОШИБКА — справа 3 против 2, ни одна не равна 1"),
     ((3, 1), (1, 3), "(3, 3) — обе растягиваются: внешнее «произведение»"),
 ]
 for shape_a, shape_b, predicted in cases:
@@ -129,9 +129,7 @@ for shape_a, shape_b, predicted in cases:
 # 4. axis
 # ---------------------------------------------------------------------------
 print("\n4. axis")
-m = np.array([[3, 7, 1, 0],
-              [9, 2, 8, 4],
-              [5, 5, 6, 1]])
+m = np.array([[3, 7, 1, 0], [9, 2, 8, 4], [5, 5, 6, 1]])
 print(m)
 for name in ("sum", "mean", "max"):
     for axis in (None, 0, 1):
@@ -196,8 +194,8 @@ query = rng.standard_normal(384)
 
 def cosine_similarities(query, matrix):
     q = query / np.linalg.norm(query)
-    m = matrix / np.linalg.norm(matrix, axis=1, keepdims=True)   # (n, 1)
-    return m @ q                                                  # (n, d) @ (d,) → (n,)
+    m = matrix / np.linalg.norm(matrix, axis=1, keepdims=True)  # (n, 1)
+    return m @ q  # (n, d) @ (d,) → (n,)
 
 
 sims = cosine_similarities(query, matrix)
@@ -237,9 +235,9 @@ print(f"argsort / argpartition: {t_sort / t_part:.1f}")
 # 7. NaN
 # ---------------------------------------------------------------------------
 print("\n7. NaN")
-full = np.arange(1, 1001, dtype=np.float64)        # 1..1000
+full = np.arange(1, 1001, dtype=np.float64)  # 1..1000
 with_nan = full.copy()
-with_nan[500] = np.nan                              # было 501.0
+with_nan[500] = np.nan  # было 501.0
 print(f"sum {with_nan.sum()}, mean {with_nan.mean()}, max {with_nan.max()}")
 print(f"nansum {np.nansum(with_nan)}, nanmean {np.nanmean(with_nan):.4f}")
 print("nan == nan:", np.nan == np.nan, "| np.isnan находит:", np.flatnonzero(np.isnan(with_nan)))
@@ -248,8 +246,10 @@ assert not np.isnan(np.nansum(with_nan))
 assert np.nan != np.nan
 
 lost = len(with_nan) - np.count_nonzero(~np.isnan(with_nan))
-print(f"mean полных данных: {full.mean()}, nanmean: {np.nanmean(with_nan):.4f}, "
-      f"потеряно элементов: {lost}")
+print(
+    f"mean полных данных: {full.mean()}, nanmean: {np.nanmean(with_nan):.4f}, "
+    f"потеряно элементов: {lost}"
+)
 assert lost == 1
 # nanmean посчитал среднее по 999 значениям: сумма без 501, делённая на 999.
 #   Потерялся 1 элемент, и среднее сдвинулось с 500.5 до ~500.4995.
@@ -265,15 +265,24 @@ assert lost == 1
 # 8. Pandas
 # ---------------------------------------------------------------------------
 print("\n8. Pandas")
-df = pd.DataFrame({
-    "id":          [1, 2, 3, 4, 5, 6, 7, 8],
-    "document_id": [1, 1, 1, 2, 2, 3, 3, 5],
-    "source":      ["arxiv", "arxiv", "arxiv", "arxiv", "arxiv",
-                    "confluence", "confluence", "github"],
-    "tokens":      [50, 300, None, 700, 90, None, 1500, 400],
-    "text":        ["Intro", "Model", "Pics", "Pretrain", "Notes",
-                    "Rules", "Access", "Setup"],
-})
+df = pd.DataFrame(
+    {
+        "id": [1, 2, 3, 4, 5, 6, 7, 8],
+        "document_id": [1, 1, 1, 2, 2, 3, 3, 5],
+        "source": [
+            "arxiv",
+            "arxiv",
+            "arxiv",
+            "arxiv",
+            "arxiv",
+            "confluence",
+            "confluence",
+            "github",
+        ],
+        "tokens": [50, 300, None, 700, 90, None, 1500, 400],
+        "text": ["Intro", "Model", "Pics", "Pretrain", "Notes", "Rules", "Access", "Setup"],
+    }
+)
 
 print("\n8.1 info():")
 df.info()
@@ -325,19 +334,26 @@ assert stats.loc["arxiv", "chunks"] == 5 and stats.loc["arxiv", "tokens"] == 114
 #   как COUNT(*) и SUM(tokens) в SQL.
 
 print("\n8.6 merge")
-docs = pd.DataFrame({
-    "id": [1, 2, 3, 4],
-    "title": ["Attention", "BERT", "Регламент", "Пустой черновик"],
-})
-merged = docs.merge(df, left_on="id", right_on="document_id",
-                    how="left", validate="one_to_many", suffixes=("_doc", "_chunk"))
+docs = pd.DataFrame(
+    {
+        "id": [1, 2, 3, 4],
+        "title": ["Attention", "BERT", "Регламент", "Пустой черновик"],
+    }
+)
+merged = docs.merge(
+    df,
+    left_on="id",
+    right_on="document_id",
+    how="left",
+    validate="one_to_many",
+    suffixes=("_doc", "_chunk"),
+)
 print(merged[["id_doc", "title", "id_chunk", "tokens"]])
-assert len(merged) == 8      # 7 чанков документов 1–3 + 1 строка документа 4 с NaN
+assert len(merged) == 8  # 7 чанков документов 1–3 + 1 строка документа 4 с NaN
 # how="left" — LEFT JOIN: «Пустой черновик» остался с NaN. Чанк документа 5
 #   отпал: документа 5 в docs нет (в LEFT JOIN главная — левая таблица).
 try:
-    docs.merge(df, left_on="id", right_on="document_id", how="left",
-               validate="one_to_one")
+    docs.merge(df, left_on="id", right_on="document_id", how="left", validate="one_to_one")
 except pd.errors.MergeError as e:
     print("validate='one_to_one':", type(e).__name__, "—", e)
 # validate проверяет уникальность ключей ДО соединения: у одного документа
@@ -362,11 +378,13 @@ print(f".str.lower():      {t_str * 1000:.1f} мс")
 print(f".apply(str.lower): {t_apply * 1000:.1f} мс")
 print(f"apply / .str: {t_apply / t_str:.1f}")
 
-obj = col.astype(object)                      # старый формат: объекты Python
+obj = col.astype(object)  # старый формат: объекты Python
 t_str_obj = best_of(lambda: obj.str.lower())
 t_apply_obj = best_of(lambda: obj.apply(str.lower))
-print(f"для dtype=object: .str {t_str_obj * 1000:.1f} мс, "
-      f"apply {t_apply_obj * 1000:.1f} мс, отношение {t_apply_obj / t_str_obj:.1f}")
+print(
+    f"для dtype=object: .str {t_str_obj * 1000:.1f} мс, "
+    f"apply {t_apply_obj * 1000:.1f} мс, отношение {t_apply_obj / t_str_obj:.1f}"
+)
 # Разница зависит от того, КАК хранятся строки:
 #   хранение pyarrow (pandas 3 при установленном pyarrow): строки лежат одним
 #     буфером в формате Arrow, и .str.lower() — один проход на C по всему

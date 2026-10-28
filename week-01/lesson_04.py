@@ -20,7 +20,6 @@ parts = raw.split()
 print(f"Сумма: {sum(int(x) for x in parts)}", f"Количество: {len(parts)}")
 
 
-
 raw = input("Введите цену товара и количество через пробел: ")
 parts = raw.split()
 
@@ -29,5 +28,4 @@ quantity = int(parts[1])
 
 print(f"{quantity} шт. * {price:,.2f} руб. = {price * quantity:,.2f} руб.")
 
-# Если вторым числом будет 0, то при делении на ноль возникнет ошибка 
-
+# Если вторым числом будет 0, то при делении на ноль возникнет ошибка

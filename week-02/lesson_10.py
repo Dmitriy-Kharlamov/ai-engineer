@@ -1,8 +1,8 @@
 import locale
-import traceback
 import random
 import re
 import time
+import traceback
 import unicodedata
 from collections import namedtuple
 from math import log2
@@ -23,6 +23,7 @@ def best_of(func, *args, runs=7):
 # ЧАСТЬ 1. Сортировки руками (задания A–E из раннего сообщения)
 # ===========================================================================
 
+
 def identity(x):
     return x
 
@@ -34,7 +35,7 @@ print("A. insertion_sort")
 
 
 def insertion_sort(items, key=identity):
-    result = list(items)                       # копия: вход не портим
+    result = list(items)  # копия: вход не портим
     for i in range(1, len(result)):
         current = result[i]
         current_key = key(current)
@@ -48,11 +49,11 @@ def insertion_sort(items, key=identity):
 
 
 random.seed(42)
-for _ in range(200):                           # проверка против эталона sorted
+for _ in range(200):  # проверка против эталона sorted
     data = [random.randint(-50, 50) for _ in range(random.randint(0, 30))]
     original = list(data)
     assert insertion_sort(data) == sorted(data)
-    assert data == original                    # вход не изменился
+    assert data == original  # вход не изменился
 
 random_5000 = [random.random() for _ in range(5000)]
 sorted_5000 = sorted(random_5000)
@@ -88,7 +89,7 @@ def merge(left, right, key=identity, strict=False):
         else:
             result.append(right[j])
             j += 1
-    result.extend(left[i:])                     # хвост одного из списков
+    result.extend(left[i:])  # хвост одного из списков
     result.extend(right[j:])
     return result
 
@@ -97,8 +98,9 @@ def merge_sort(items, key=identity, strict=False):
     if len(items) <= 1:
         return list(items)
     mid = len(items) // 2
-    return merge(merge_sort(items[:mid], key, strict),
-                 merge_sort(items[mid:], key, strict), key, strict)
+    return merge(
+        merge_sort(items[:mid], key, strict), merge_sort(items[mid:], key, strict), key, strict
+    )
 
 
 assert merge([1, 4, 9], [2, 3, 10, 11]) == [1, 2, 3, 4, 9, 10, 11]
@@ -115,7 +117,7 @@ stable = merge_sort(tagged, key=by_key)
 unstable = merge_sort(tagged, key=by_key, strict=True)
 print("с <= :", stable[:8])
 print("с <  :", unstable[:8])
-assert stable == sorted(tagged, key=by_key)        # sorted устойчив — эталон
+assert stable == sorted(tagged, key=by_key)  # sorted устойчив — эталон
 assert unstable != sorted(tagged, key=by_key)
 # По ключу оба результата отсортированы верно — ломается УСТОЙЧИВОСТЬ.
 #   С <= при равных ключах берётся элемент из left — он стоял раньше, порядок
@@ -134,7 +136,7 @@ print("\nC. quicksort")
 def quicksort(items, key=identity):
     if len(items) <= 1:
         return list(items)
-    pivot, rest = items[0], items[1:]                 # опорный — первый
+    pivot, rest = items[0], items[1:]  # опорный — первый
     p = key(pivot)
     less = [x for x in rest if key(x) < p]
     greater = [x for x in rest if key(x) >= p]
@@ -163,9 +165,9 @@ except RecursionError:
 def quicksort_random(items, key=identity):
     if len(items) <= 1:
         return list(items)
-    p = key(random.choice(items))                      # случайный опорный
+    p = key(random.choice(items))  # случайный опорный
     less = [x for x in items if key(x) < p]
-    equal = [x for x in items if key(x) == p]          # равные — сразу на место
+    equal = [x for x in items if key(x) == p]  # равные — сразу на место
     greater = [x for x in items if key(x) > p]
     return quicksort_random(less, key) + equal + quicksort_random(greater, key)
 
@@ -191,13 +193,16 @@ print("quicksort_random на list(range(1500)) и list(range(100_000)): OK")
 print("\nD. оценка ↓, при равной — имя ↑")
 results = [("doc_b", 0.9), ("doc_a", 0.9), ("doc_c", 0.7), ("doc_a", 0.7), ("doc_b", 0.7)]
 
-double = sorted(results, key=itemgetter(0))                   # младший: имя ↑
-double = sorted(double, key=itemgetter(1), reverse=True)      # старший: оценка ↓
+double = sorted(results, key=itemgetter(0))  # младший: имя ↑
+double = sorted(double, key=itemgetter(1), reverse=True)  # старший: оценка ↓
 one_key = sorted(results, key=lambda r: (-r[1], r[0]))
 print("двойная сортировка:", double)
 print("один кортеж:       ", one_key)
-assert double == one_key == [("doc_a", 0.9), ("doc_b", 0.9),
-                             ("doc_a", 0.7), ("doc_b", 0.7), ("doc_c", 0.7)]
+assert (
+    double
+    == one_key
+    == [("doc_a", 0.9), ("doc_b", 0.9), ("doc_a", 0.7), ("doc_b", 0.7), ("doc_c", 0.7)]
+)
 
 by_score = quicksort(results, key=lambda r: -r[1])
 print("quicksort по оценке:", by_score)
@@ -248,9 +253,11 @@ print("quicksort на месте: ", quicksort_inplace(results, key=lambda r: -r
 #   2 с × 78 ≈ 157 с ≈ 2,6 минуты.
 # Разница между алгоритмами на 50 000 элементов — примерно в 32 раза
 #   (5 000 / 157), и с ростом n она только увеличивается.
-print("\nE. проверка прикидки:",
-      f"O(n²): {2 * 50 ** 2} с;",
-      f"O(n log n): {2 * 50_000 * log2(50_000) / (1_000 * log2(1_000)):.0f} с")
+print(
+    "\nE. проверка прикидки:",
+    f"O(n²): {2 * 50**2} с;",
+    f"O(n log n): {2 * 50_000 * log2(50_000) / (1_000 * log2(1_000)):.0f} с",
+)
 
 
 # ===========================================================================
@@ -264,8 +271,7 @@ print("\n1. natural_key")
 
 
 def natural_key(s):
-    return [int(part) if part.isdigit() else part.casefold()
-            for part in re.split(r"(\d+)", s)]
+    return [int(part) if part.isdigit() else part.casefold() for part in re.split(r"(\d+)", s)]
 
 
 files = ["файл10.txt", "файл9.txt", "файл1.txt", "Файл2.txt", "отчёт.txt"]
@@ -278,8 +284,7 @@ assert natural == ["отчёт.txt", "файл1.txt", "Файл2.txt", "файл
 
 
 def natural_key_no_fold(s):
-    return [int(part) if part.isdigit() else part
-            for part in re.split(r"(\d+)", s)]
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", s)]
 
 
 no_fold = sorted(files, key=natural_key_no_fold)
@@ -305,7 +310,7 @@ assert no_fold[0] == "Файл2.txt"
 # ---------------------------------------------------------------------------
 print("\n2. Кириллица")
 words = ["ёж", "яблоко", "ель", "Ёлка", "абажур"]
-DICTIONARY_ORDER = ["абажур", "ёж", "Ёлка", "ель", "яблоко"]   # как в словаре
+DICTIONARY_ORDER = ["абажур", "ёж", "Ёлка", "ель", "яблоко"]  # как в словаре
 
 plain = sorted(words)
 by_key = sorted(words, key=lambda s: s.casefold().replace("ё", "е"))
@@ -321,7 +326,7 @@ try:
 except locale.Error as e:
     print("locale.strxfrm:    ошибка:", repr(e))
 finally:
-    locale.setlocale(locale.LC_COLLATE, "C")      # вернуть как было
+    locale.setlocale(locale.LC_COLLATE, "C")  # вернуть как было
 # Обычный sorted: «Ёлка» первая (заглавная Ё — U+0401, раньше всего алфавита
 #   А–я, U+0410–U+044F), «ёж» последний (строчная ё — U+0451, после я U+044F).
 # casefold().replace("ё", "е"): регистр и ё убраны из ключа, остаётся алфавит
@@ -377,16 +382,15 @@ chunks = [
 ]
 
 # От младшего ключа к старшему:
-step1 = sorted(chunks, key=attrgetter("tokens"))                  # младший: tokens ↑
-final = sorted(step1, key=attrgetter("source"), reverse=True)     # старший: source ↓
+step1 = sorted(chunks, key=attrgetter("tokens"))  # младший: tokens ↑
+final = sorted(step1, key=attrgetter("source"), reverse=True)  # старший: source ↓
 for c in final:
     print("   ", c.source, c.tokens, c.text)
 
 assert [c.text for c in final] == ["g1", "g2", "c2", "c1", "a2", "a3", "a1"]
 # проверка свойством: источники по убыванию, внутри — токены по возрастанию
 for prev, cur in zip(final, final[1:]):
-    assert prev.source > cur.source or (
-        prev.source == cur.source and prev.tokens <= cur.tokens)
+    assert prev.source > cur.source or (prev.source == cur.source and prev.tokens <= cur.tokens)
 # Почему работает: Timsort УСТОЙЧИВ — элементы с равным ключом сохраняют
 #   взаимный порядок. Вторая сортировка (по source) переставляет группы, но
 #   внутри группы с одинаковым source оставляет порядок от первой сортировки,
@@ -431,6 +435,7 @@ assert calls == n
 
 class Counted:
     """Обёртка, которая считает сравнения «<» — их и делает Timsort."""
+
     comparisons = 0
 
     def __init__(self, key):

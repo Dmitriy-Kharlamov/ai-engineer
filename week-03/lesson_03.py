@@ -39,9 +39,9 @@ class ControlServer:
     def __init__(self, max_conn=1000):
         self.max_conn = max_conn
         self.active = 0
-        self.hits = Counter()                  # имя сценария → число запросов
-        self.times = defaultdict(list)         # имя → моменты прихода запросов
-        self.keys = defaultdict(list)          # имя → ключи идемпотентности по запросам
+        self.hits = Counter()  # имя сценария → число запросов
+        self.times = defaultdict(list)  # имя → моменты прихода запросов
+        self.keys = defaultdict(list)  # имя → ключи идемпотентности по запросам
         self.blocked_until = {}
         self.windows = Counter()
         self.alive = {}
@@ -61,10 +61,12 @@ class ControlServer:
             head = (await reader.readuntil(b"\r\n\r\n")).decode("latin-1")
             lines = head.split("\r\n")
             method, target, _ = lines[0].split(" ", 2)
-            headers = {k.strip().lower(): v.strip()
-                       for k, v in (l.split(":", 1) for l in lines[1:] if ":" in l)}
+            headers = {
+                k.strip().lower(): v.strip()
+                for k, v in (l.split(":", 1) for l in lines[1:] if ":" in l)
+            }
             await reader.readexactly(int(headers.get("content-length", 0)))
-            if self.active >= self.max_conn:               # лимит одновременных
+            if self.active >= self.max_conn:  # лимит одновременных
                 await self.respond(writer, 503, {"error": "busy"})
                 return
             self.active += 1
@@ -73,7 +75,7 @@ class ControlServer:
             q = dict(urllib.parse.parse_qsl(parts.query))
             await self.route(method, parts.path.strip("/").split("/"), q, headers, writer)
         except (ConnectionError, asyncio.IncompleteReadError):
-            pass                                           # клиент ушёл — нормально
+            pass  # клиент ушёл — нормально
         finally:
             if admitted:
                 self.active -= 1
@@ -93,7 +95,7 @@ class ControlServer:
         elif kind == "limited":
             ra = float(q.get("retry_after", 2))
             t = now()
-            if t < self.blocked_until.get(name, 0):             # рано пришёл
+            if t < self.blocked_until.get(name, 0):  # рано пришёл
                 left = self.blocked_until[name] - t
                 await self.respond(writer, 429, {}, {"Retry-After": f"{left:.0f}"})
             elif self.windows[name] < int(q.get("times", 0)):  # новое окно лимита
@@ -105,8 +107,8 @@ class ControlServer:
 
         elif kind == "orders":
             self.keys[name].append(headers.get("idempotency-key"))
-            created = len(set(self.keys[name]))      # новый ключ = новый заказ
-            code = 503 if n < int(q.get("fail", 0)) else 200   # заказ создан, ответ «потерян»
+            created = len(set(self.keys[name]))  # новый ключ = новый заказ
+            code = 503 if n < int(q.get("fail", 0)) else 200  # заказ создан, ответ «потерян»
             await self.respond(writer, code, {"orders_created": created})
 
         elif kind == "breaker":
@@ -118,8 +120,9 @@ class ControlServer:
 
         elif kind == "trickle":
             seconds, interval = int(q.get("seconds", 10)), float(q.get("interval", 1))
-            writer.write(b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n"
-                         b"Connection: close\r\n\r\n" % seconds)
+            writer.write(
+                b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % seconds
+            )
             await writer.drain()
             for _ in range(seconds):
                 await asyncio.sleep(interval)
@@ -136,9 +139,12 @@ class ControlServer:
     @staticmethod
     async def respond(writer, code, body, extra=None):
         payload = json.dumps(body).encode()
-        head = [f"HTTP/1.1 {code} {HTTPStatus(code).phrase}",
-                "Content-Type: application/json",
-                f"Content-Length: {len(payload)}", "Connection: close"]
+        head = [
+            f"HTTP/1.1 {code} {HTTPStatus(code).phrase}",
+            "Content-Type: application/json",
+            f"Content-Length: {len(payload)}",
+            "Connection: close",
+        ]
         head += [f"{k}: {v}" for k, v in (extra or {}).items()]
         writer.write(("\r\n".join(head) + "\r\n\r\n").encode() + payload)
         await writer.drain()
@@ -149,17 +155,16 @@ class ControlServer:
 # ===========================================================================
 IDEMPOTENT = {"GET", "HEAD", "OPTIONS", "PUT", "DELETE", "TRACE"}
 NOT_SENT = (httpx.ConnectError, httpx.ConnectTimeout, httpx.PoolTimeout)
-MAYBE_DONE = (httpx.ReadTimeout, httpx.WriteTimeout, httpx.ReadError,
-              httpx.RemoteProtocolError)
+MAYBE_DONE = (httpx.ReadTimeout, httpx.WriteTimeout, httpx.ReadError, httpx.RemoteProtocolError)
 
 
 def should_retry(outcome, method):
     """outcome — код ответа (int) или класс исключения httpx."""
     if isinstance(outcome, int):
         return outcome in {408, 425, 429, 500, 502, 503, 504}
-    if issubclass(outcome, NOT_SENT):          # запрос точно не ушёл на сервер
+    if issubclass(outcome, NOT_SENT):  # запрос точно не ушёл на сервер
         return True
-    if issubclass(outcome, MAYBE_DONE):        # мог выполниться — только идемпотентный
+    if issubclass(outcome, MAYBE_DONE):  # мог выполниться — только идемпотентный
         return method.upper() in IDEMPOTENT
     return False
 
@@ -186,14 +191,26 @@ def task1():
         (409, "PUT", False, "конфликт состояния — его разрешают, а не перезапрашивают"),
         # три своих случая
         (httpx.ConnectTimeout, "POST", True, "своё: соединение не установилось — запроса не было"),
-        (httpx.RemoteProtocolError, "POST", False, "своё: сервер оборвал ответ посередине — как ReadTimeout"),
-        (httpx.ReadTimeout, "PUT", True, "своё: PUT идемпотентен — «заменить на X» дважды = один раз"),
+        (
+            httpx.RemoteProtocolError,
+            "POST",
+            False,
+            "своё: сервер оборвал ответ посередине — как ReadTimeout",
+        ),
+        (
+            httpx.ReadTimeout,
+            "PUT",
+            True,
+            "своё: PUT идемпотентен — «заменить на X» дважды = один раз",
+        ),
     ]
     for outcome, method, expected, why in cases:
         got = should_retry(outcome, method)
         name = outcome if isinstance(outcome, int) else outcome.__name__
         print(f"   {str(name):20} {method:5} → {'повторять' if got else 'нет':9} | {why}")
         assert got == expected, (outcome, method)
+
+
 # Почему ConnectError можно повторять для POST, а ReadTimeout нельзя:
 #   ConnectError — соединение не установилось (DNS, отказ, сеть). Байты запроса
 #   не ушли, сервер о нём не знает, значит, ничего не выполнил: повтор — это
@@ -209,8 +226,19 @@ def task1():
 # ===========================================================================
 # 2. Retry руками
 # ===========================================================================
-async def retry_request(client, method, url, *, attempts=5, base=0.5, cap=8.0,
-                        jitter=0.5, respect_retry_after=True, log=print, **kw):
+async def retry_request(
+    client,
+    method,
+    url,
+    *,
+    attempts=5,
+    base=0.5,
+    cap=8.0,
+    jitter=0.5,
+    respect_retry_after=True,
+    log=print,
+    **kw,
+):
     start = now()
     for attempt in range(1, attempts + 1):
         response = error = None
@@ -232,8 +260,10 @@ async def retry_request(client, method, url, *, attempts=5, base=0.5, cap=8.0,
         retry_after = response.headers.get("Retry-After") if response is not None else None
         if respect_retry_after and retry_after:
             delay, source = float(retry_after), "Retry-After"
-        log(f"      попытка {attempt}: {reason} → пауза {delay:.2f} с ({source}), "
-            f"прошло {now() - start:.2f} с")
+        log(
+            f"      попытка {attempt}: {reason} → пауза {delay:.2f} с ({source}), "
+            f"прошло {now() - start:.2f} с"
+        )
         await asyncio.sleep(delay)
 
 
@@ -241,13 +271,17 @@ async def task2(srv, client):
     print("\n2. Retry руками: сервер падает первые 3 раза")
     random.seed(1)
     low, high = 0.5 + 1 + 2, (0.5 + 1 + 2) + 3 * 0.5
-    print(f"   прогноз: паузы 0.5 + 1 + 2 = {low} с плюс джиттер 3 × [0, 0.5) "
-          f"→ от {low} до {high} с, в среднем {low + 3 * 0.25} с")
+    print(
+        f"   прогноз: паузы 0.5 + 1 + 2 = {low} с плюс джиттер 3 × [0, 0.5) "
+        f"→ от {low} до {high} с, в среднем {low + 3 * 0.25} с"
+    )
     start = now()
     await retry_request(client, "GET", f"{srv.url}/flaky/t2?fail=3")
     total = now() - start
     print(f"   итого: {total:.2f} с, запросов на сервере: {srv.hits['t2']}")
     assert srv.hits["t2"] == 4 and low <= total <= high + 0.3
+
+
 # Сервер падает 3 раза, значит, нужно 4 попытки и 3 паузы. Паузы растут
 #   экспонентой от base = 0.5: 0.5, 1, 2 (потолок cap = 8 ещё не достигнут),
 #   к каждой — джиттер от 0 до 0.5 с. Итог попал в предсказанный диапазон;
@@ -262,12 +296,13 @@ BASE, CAP, CLIENTS, RETRIES = 0.5, 20.0, 200, 5
 
 def make_pause(kind):
     def pause(retry_index):
-        exp = min(CAP, BASE * 2 ** retry_index)
+        exp = min(CAP, BASE * 2**retry_index)
         if kind == "без джиттера":
             return exp
         if kind == "аддитивный":
             return exp + random.uniform(0, 1.0)
-        return random.uniform(0, exp)             # full jitter
+        return random.uniform(0, exp)  # full jitter
+
     return pause
 
 
@@ -293,13 +328,13 @@ def drain_metric(kind, max_retries, seed=0, capacity=10, service=0.1):
     Возвращает: сколько клиентов прошло, когда закончил последний, всего запросов."""
     random.seed(seed)
     pause = make_pause(kind)
-    events = [(0.0, c, 0) for c in range(CLIENTS)]     # (время, клиент, № повтора)
+    events = [(0.0, c, 0) for c in range(CLIENTS)]  # (время, клиент, № повтора)
     heapq.heapify(events)
     busy, served, last_done, requests = [], 0, 0.0, 0
     while events:
         t, client, retry = heapq.heappop(events)
         requests += 1
-        busy = [end for end in busy if end > t]          # кто ещё обслуживается
+        busy = [end for end in busy if end > t]  # кто ещё обслуживается
         if len(busy) < capacity:
             busy.append(t + service)
             served += 1
@@ -311,22 +346,30 @@ def drain_metric(kind, max_retries, seed=0, capacity=10, service=0.1):
 
 async def task3():
     print("\n3. Джиттер: 200 клиентов, 5 повторов, base=0.5, cap=20, seed=0")
-    print(f"   {'формула':14} | {'пик в 100 мс':>12} | {'окон':>4} || "
-          f"{'5 повторов: прошло':>18} | {'конец':>6} || {'без лимита: все за':>18} | {'запросов':>8}")
+    print(
+        f"   {'формула':14} | {'пик в 100 мс':>12} | {'окон':>4} || "
+        f"{'5 повторов: прошло':>18} | {'конец':>6} || {'без лимита: все за':>18} | {'запросов':>8}"
+    )
     rows = {}
     for kind in KINDS:
         peak, used = peak_metric(kind)
         served5, end5, _ = drain_metric(kind, max_retries=5)
         served_all, end_all, reqs = drain_metric(kind, max_retries=10_000)
         rows[kind] = (peak, used, served5, end5, end_all)
-        print(f"   {kind:14} | {peak:>12} | {used:>4} || {served5:>14}/200 | "
-              f"{end5:>5.1f}с || {end_all:>16.1f} с | {reqs:>8}")
+        print(
+            f"   {kind:14} | {peak:>12} | {used:>4} || {served5:>14}/200 | "
+            f"{end5:>5.1f}с || {end_all:>16.1f} с | {reqs:>8}"
+        )
         assert served_all == CLIENTS
-    print("   устойчивость к seed (пик, среднее по seed 0–19):",
-          {k: round(sum(peak_metric(k, s)[0] for s in range(20)) / 20, 1) for k in KINDS})
+    print(
+        "   устойчивость к seed (пик, среднее по seed 0–19):",
+        {k: round(sum(peak_metric(k, s)[0] for s in range(20)) / 20, 1) for k in KINDS},
+    )
     assert rows["без джиттера"][0] == 200 and rows["без джиттера"][1] == 5
-    assert rows["аддитивный"][0] < rows["full jitter"][0]           # пик: аддитивный лучше
-    assert rows["full jitter"][4] < rows["аддитивный"][4]            # проход: full лучше
+    assert rows["аддитивный"][0] < rows["full jitter"][0]  # пик: аддитивный лучше
+    assert rows["full jitter"][4] < rows["аддитивный"][4]  # проход: full лучше
+
+
 # Метрика 1 (пик). Мои числа: без джиттера 200 и 5 окон — совпало с уроком.
 #   Аддитивный 27 / 107 и full jitter 65 / 120 против 24 / 108 и 66 / 123 в
 #   уроке — не сошлось до единицы. Порядок величин и вывод те же: точные
@@ -367,6 +410,8 @@ async def task3_server_check():
         counts = Counter(r.status_code for r in codes)
         print(f"   ответы: {dict(counts)}")
         assert counts[200] == 10 and counts[503] == 20
+
+
 # Сервер принял ровно 10 (лимит K), остальным 20 сразу ответил 503 — тот же
 #   отказ «занято», который моделирует симуляция в метрике 2.
 
@@ -379,18 +424,24 @@ async def task4(srv, client):
     random.seed(4)
     print("   а) уважаем Retry-After:")
     start = now()
-    await retry_request(client, "GET", f"{srv.url}/limited/ra_ok?times=2&retry_after=2",
-                        jitter=0)
+    await retry_request(client, "GET", f"{srv.url}/limited/ra_ok?times=2&retry_after=2", jitter=0)
     t_ok = now() - start
     print(f"   итого {t_ok:.2f} с, запросов на сервере: {srv.hits['ra_ok']}")
 
     print("   б) игнорируем Retry-After (паузы по формуле 0.5, 1, 2, 4):")
     start = now()
-    await retry_request(client, "GET", f"{srv.url}/limited/ra_bad?times=2&retry_after=2",
-                        jitter=0, respect_retry_after=False)
+    await retry_request(
+        client,
+        "GET",
+        f"{srv.url}/limited/ra_bad?times=2&retry_after=2",
+        jitter=0,
+        respect_retry_after=False,
+    )
     t_bad = now() - start
     print(f"   итого {t_bad:.2f} с, запросов на сервере: {srv.hits['ra_bad']}")
     assert srv.hits["ra_ok"] == 3 and srv.hits["ra_bad"] == 5 and t_bad > t_ok
+
+
 # а) Обе паузы ровно 2.00 с с пометкой «Retry-After» — код взял паузу из
 #    заголовка, а не из формулы (по формуле было бы 0.5 и 1). Сервер открыл
 #    второе окно лимита, мы его выждали, третья попытка прошла: 3 запроса,
@@ -422,12 +473,22 @@ async def task5(srv, client):
         start = now()
         try:
             async with asyncio.timeout(3):
-                await retry_request(client, "GET", url, attempts=5, base=1, cap=8, jitter=0,
-                                    timeout=httpx.Timeout(30.0))
+                await retry_request(
+                    client,
+                    "GET",
+                    url,
+                    attempts=5,
+                    base=1,
+                    cap=8,
+                    jitter=0,
+                    timeout=httpx.Timeout(30.0),
+                )
         except TimeoutError as e:
             cancelled = e.__cause__ or e.__context__
             print(f"   → {type(e).__name__} через {now() - start:.2f} с")
             print(f"     внутри было: {type(cancelled).__name__}, {where(cancelled)}")
+
+
 # а) Попытка 1 (0–0.2 с), пауза 1 с, попытка 2 (1.2–1.4 с), пауза 2 с должна была
 #    закончиться в 3.4 с, но в 3.0 asyncio.timeout отменил задачу: CancelledError
 #    вылетел из await asyncio.sleep(delay), и блок превратил его в TimeoutError.
@@ -447,18 +508,24 @@ async def task6(srv, client):
     per_attempt = httpx.Timeout(10.0, read=1.0)
     for title, url in [
         ("а) сервер молчит 2 с", f"{srv.url}/slow?delay=2"),
-        ("б) сервер шлёт по байту раз в 0.5 с, 20 байт", f"{srv.url}/trickle?seconds=20&interval=0.5"),
+        (
+            "б) сервер шлёт по байту раз в 0.5 с, 20 байт",
+            f"{srv.url}/trickle?seconds=20&interval=0.5",
+        ),
     ]:
         print(f"   {title}:")
         start = now()
         try:
             async with asyncio.timeout(5):
-                await retry_request(client, "GET", url, attempts=3, base=0.2, jitter=0,
-                                    timeout=per_attempt)
+                await retry_request(
+                    client, "GET", url, attempts=3, base=0.2, jitter=0, timeout=per_attempt
+                )
         except httpx.ReadTimeout:
             print(f"   → сработал таймаут ПОПЫТКИ: ReadTimeout через {now() - start:.2f} с")
         except TimeoutError:
             print(f"   → сработал общий ДЕДЛАЙН: TimeoutError через {now() - start:.2f} с")
+
+
 # а) Сервер молчит 2 с, а read=1: каждая попытка падает с ReadTimeout через 1 с.
 #    3 попытки по 1 с + паузы 0.2 и 0.4 = ~3.6 с — меньше 5, и до дедлайна дело
 #    не дошло: retry-цикл исчерпал попытки и отдал последний ReadTimeout.
@@ -474,7 +541,7 @@ async def task6(srv, client):
 # ===========================================================================
 async def place_order_buggy(client, url, attempts=3):
     for _ in range(attempts):
-        key = str(uuid.uuid4())                     # ОШИБКА: новый ключ на каждую попытку
+        key = str(uuid.uuid4())  # ОШИБКА: новый ключ на каждую попытку
         r = await client.post(url, json={"item": "book"}, headers={"Idempotency-Key": key})
         if r.status_code < 400:
             return r
@@ -482,26 +549,41 @@ async def place_order_buggy(client, url, attempts=3):
 
 
 async def place_order_fixed(client, url):
-    key = str(uuid.uuid4())                         # один раз, СНАРУЖИ цикла
-    return await retry_request(client, "POST", url, base=0.1, jitter=0,
-                               json={"item": "book"}, headers={"Idempotency-Key": key},
-                               log=lambda *_: None)
+    key = str(uuid.uuid4())  # один раз, СНАРУЖИ цикла
+    return await retry_request(
+        client,
+        "POST",
+        url,
+        base=0.1,
+        jitter=0,
+        json={"item": "book"},
+        headers={"Idempotency-Key": key},
+        log=lambda *_: None,
+    )
 
 
 async def task7(srv, client):
     print("\n7. Ключ идемпотентности (сервер создаёт заказ, а первые 2 ответа «теряет»)")
     r = await place_order_buggy(client, f"{srv.url}/orders/bug?fail=2")
-    print(f"   uuid4 внутри цикла:  запросов {srv.hits['bug']}, разных ключей "
-          f"{len(set(srv.keys['bug']))} → создано заказов: {r.json()['orders_created']}")
+    print(
+        f"   uuid4 внутри цикла:  запросов {srv.hits['bug']}, разных ключей "
+        f"{len(set(srv.keys['bug']))} → создано заказов: {r.json()['orders_created']}"
+    )
     r = await place_order_fixed(client, f"{srv.url}/orders/fix?fail=2")
-    print(f"   uuid4 снаружи цикла: запросов {srv.hits['fix']}, разных ключей "
-          f"{len(set(srv.keys['fix']))} → создано заказов: {r.json()['orders_created']}")
+    print(
+        f"   uuid4 снаружи цикла: запросов {srv.hits['fix']}, разных ключей "
+        f"{len(set(srv.keys['fix']))} → создано заказов: {r.json()['orders_created']}"
+    )
     assert srv.keys and len(set(srv.keys["bug"])) == 3 and len(set(srv.keys["fix"])) == 1
 
     r1 = await place_order_buggy(client, f"{srv.url}/orders/happy_bug")
     r2 = await place_order_fixed(client, f"{srv.url}/orders/happy_fix")
-    print(f"   счастливый путь (без сбоев): с ошибкой — {r1.json()['orders_created']} заказ, "
-          f"исправленный — {r2.json()['orders_created']} заказ")
+    print(
+        f"   счастливый путь (без сбоев): с ошибкой — {r1.json()['orders_created']} заказ, "
+        f"исправленный — {r2.json()['orders_created']} заказ"
+    )
+
+
 # С ошибкой: 3 попытки — 3 ключа, сервер видит три РАЗНЫЕ операции и честно
 #   создаёт 3 заказа (первые два — с «потерянным» ответом). Исправленный: один
 #   ключ на все 3 попытки, сервер узнаёт повтор — 1 заказ.
@@ -515,18 +597,21 @@ async def task7(srv, client):
 # 8. Проверка чисел про urllib3 (и tenacity)
 # ===========================================================================
 def task8_sync(srv_url, srv):
+    from importlib.metadata import version
+
     import requests
     import tenacity
     import urllib3
-    from importlib.metadata import version
     from requests.adapters import HTTPAdapter
     from urllib3.util import Retry
 
     print(f"\n8. urllib3 {urllib3.__version__}, tenacity {version('tenacity')}")
     r = Retry()
     print("   DEFAULT_ALLOWED_METHODS:", sorted(Retry.DEFAULT_ALLOWED_METHODS))
-    print(f"   backoff_factor={r.backoff_factor}  backoff_jitter={r.backoff_jitter}  "
-          f"backoff_max={r.backoff_max}  respect_retry_after_header={r.respect_retry_after_header}")
+    print(
+        f"   backoff_factor={r.backoff_factor}  backoff_jitter={r.backoff_jitter}  "
+        f"backoff_max={r.backoff_max}  respect_retry_after_header={r.respect_retry_after_header}"
+    )
 
     r = Retry(total=5, backoff_factor=1)
     backoffs = []
@@ -537,13 +622,21 @@ def task8_sync(srv_url, srv):
 
     with requests.Session() as s:
         s.trust_env = False
-        s.mount("http://", HTTPAdapter(max_retries=Retry(
-            total=3, backoff_factor=1, status_forcelist=[503], raise_on_status=False)))
+        s.mount(
+            "http://",
+            HTTPAdapter(
+                max_retries=Retry(
+                    total=3, backoff_factor=1, status_forcelist=[503], raise_on_status=False
+                )
+            ),
+        )
         resp = s.get(f"{srv_url}/flaky/u3?fail=3", timeout=5)
     times = srv.times["u3"]
     gaps = [round(b - a, 2) for a, b in zip(times, times[1:])]
-    print(f"   реальный прогон через requests: статус {resp.status_code}, "
-          f"запросов {len(times)}, паузы между ними: {gaps}")
+    print(
+        f"   реальный прогон через requests: статус {resp.status_code}, "
+        f"запросов {len(times)}, паузы между ними: {gaps}"
+    )
     assert gaps[0] < 0.1 and abs(gaps[1] - 2) < 0.3 and abs(gaps[2] - 4) < 0.3
 
     random.seed(8)
@@ -552,8 +645,12 @@ def task8_sync(srv_url, srv):
     rx = tenacity.wait_random_exponential(multiplier=1, max=60)
     a = [ej(st) for _ in range(10_000)]
     b = [rx(st) for _ in range(10_000)]
-    print(f"   tenacity, 3-я попытка: wait_exponential_jitter ∈ [{min(a):.2f}, {max(a):.2f}]"
-          f" | wait_random_exponential ∈ [{min(b):.2f}, {max(b):.2f}]")
+    print(
+        f"   tenacity, 3-я попытка: wait_exponential_jitter ∈ [{min(a):.2f}, {max(a):.2f}]"
+        f" | wait_random_exponential ∈ [{min(b):.2f}, {max(b):.2f}]"
+    )
+
+
 # urllib3: методы, backoff_factor = 0, backoff_jitter = 0.0, backoff_max = 120 —
 #   совпало с уроком. Версия — в первой строке задания 8 (урок проверял 2.7.0;
 #   при подготовке я проверял на 2.8.0 — значения те же). Если у тебя другая
@@ -627,8 +724,10 @@ async def task9(srv, client):
         except httpx.HTTPStatusError as e:
             result = f"ошибка {e.response.status_code}"
         touched = srv.hits["svc"] - before
-        print(f"   {label:28} → {result:42} | состояние: {breaker.state:9} | "
-              f"сервер получил: {touched} (всего {srv.hits['svc']})")
+        print(
+            f"   {label:28} → {result:42} | состояние: {breaker.state:9} | "
+            f"сервер получил: {touched} (всего {srv.hits['svc']})"
+        )
         return touched
 
     for i in range(3):
@@ -637,7 +736,7 @@ async def task9(srv, client):
     for i in range(4):
         assert await attempt(f"открыт, вызов {i + 1}") == 0
     await asyncio.sleep(1.1)
-    await attempt("пауза прошла, пробник")            # сервис всё ещё лежит
+    await attempt("пауза прошла, пробник")  # сервис всё ещё лежит
     assert breaker.state == "open"
     await asyncio.sleep(1.1)
     srv.alive["svc"] = True
@@ -646,6 +745,8 @@ async def task9(srv, client):
     for i in range(2):
         await attempt(f"закрыт, вызов {i + 1}")
     assert srv.hits["svc"] == 3 + 1 + 1 + 2
+
+
 # 3 ошибки подряд — предохранитель открылся. 4 следующих вызова получили отказ
 #   мгновенно, и счётчик на сервере не сдвинулся (получил: 0) — упавший сервис
 #   не трогали. Через 1 с (half-open) пропущен один пробник; сервис ещё лежал —
@@ -684,7 +785,10 @@ async def task9(srv, client):
 async def main():
     task1()
     timeout = httpx.Timeout(10.0)
-    async with ControlServer() as srv, httpx.AsyncClient(trust_env=False, timeout=timeout) as client:
+    async with (
+        ControlServer() as srv,
+        httpx.AsyncClient(trust_env=False, timeout=timeout) as client,
+    ):
         await task2(srv, client)
         await task3()
         await task3_server_check()

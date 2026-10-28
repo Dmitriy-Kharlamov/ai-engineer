@@ -33,9 +33,11 @@ SOURCES = ["arxiv", "confluence", "github"]
 TOPICS = ["attention", "bert", "retrieval", "docker", "policy"]
 
 docs = [(i, f"Документ {i:02d}", SOURCES[i % 3]) for i in range(1, 51)]
-docs += [(51, "Черновик A", "drafts"),        # источник целиком без чанков
-         (52, "Черновик B", "drafts"),
-         (53, "Пустой README", "github")]     # документ без чанков в живом источнике
+docs += [
+    (51, "Черновик A", "drafts"),  # источник целиком без чанков
+    (52, "Черновик B", "drafts"),
+    (53, "Пустой README", "github"),
+]  # документ без чанков в живом источнике
 cur.executemany("INSERT INTO documents VALUES (?, ?, ?)", docs)
 
 random.seed(42)
@@ -43,13 +45,17 @@ N = 200_000
 rows = []
 for i in range(1, N + 1):
     topic = random.choice(TOPICS)
-    rows.append((random.randint(1, 50),             # document_id от 1 до 50
-                 f"{topic}-{i:06d}",                # например 'bert-000123'
-                 random.randint(50, 1000),          # tokens
-                 0 if random.random() < 0.05 else 1))
+    rows.append(
+        (
+            random.randint(1, 50),  # document_id от 1 до 50
+            f"{topic}-{i:06d}",  # например 'bert-000123'
+            random.randint(50, 1000),  # tokens
+            0 if random.random() < 0.05 else 1,
+        )
+    )
 cur.executemany(
-    "INSERT INTO chunks (document_id, text, tokens, processed) VALUES (?, ?, ?, ?)",
-    rows)
+    "INSERT INTO chunks (document_id, text, tokens, processed) VALUES (?, ?, ?, ?)", rows
+)
 conn.commit()
 print("чанков:", cur.execute("SELECT COUNT(*) FROM chunks").fetchone()[0])
 
@@ -85,14 +91,16 @@ print(f"время до индекса:    {t_before:.5f} с")
 
 # 1. Составной индекс и правило левого префикса
 cur.execute("CREATE INDEX idx_chunks_doc_tokens ON chunks(document_id, tokens)")
-plan("1a. document_id = 7",
-     "SELECT * FROM chunks WHERE document_id = 7")
-plan("1b. document_id = 7 AND tokens > 400",
-     "SELECT * FROM chunks WHERE document_id = 7 AND tokens > 400")
-plan("1c. document_id = 7 ORDER BY tokens",
-     "SELECT * FROM chunks WHERE document_id = 7 ORDER BY tokens")
-plan("1d. tokens > 400",
-     "SELECT * FROM chunks WHERE tokens > 400")
+plan("1a. document_id = 7", "SELECT * FROM chunks WHERE document_id = 7")
+plan(
+    "1b. document_id = 7 AND tokens > 400",
+    "SELECT * FROM chunks WHERE document_id = 7 AND tokens > 400",
+)
+plan(
+    "1c. document_id = 7 ORDER BY tokens",
+    "SELECT * FROM chunks WHERE document_id = 7 ORDER BY tokens",
+)
+plan("1d. tokens > 400", "SELECT * FROM chunks WHERE tokens > 400")
 # 1a: SEARCH (document_id=?) — document_id = левый префикс индекса, поиск сразу
 #     в нужный участок дерева вместо перебора 200 000 строк.
 # 1b: SEARCH (document_id=? AND tokens>?) — префикс плюс следующий столбец:
@@ -123,26 +131,26 @@ print(f"время после индекса: {t_after:.5f} с   (быстрее
 
 # 3. Убийцы индекса
 cur.execute("CREATE INDEX idx_chunks_text ON chunks(text)")
-cur.execute("PRAGMA case_sensitive_like = ON")   # иначе LIKE в SQLite не берёт индекс
+cur.execute("PRAGMA case_sensitive_like = ON")  # иначе LIKE в SQLite не берёт индекс
 
 # 3.1 функция от столбца
-plan("3.1 до: LOWER(text) = ...",
-     "SELECT * FROM chunks WHERE LOWER(text) = 'bert-000123'")
+plan("3.1 до: LOWER(text) = ...", "SELECT * FROM chunks WHERE LOWER(text) = 'bert-000123'")
 cur.execute("CREATE INDEX idx_chunks_text_lower ON chunks(LOWER(text))")
-plan("3.1 после: индекс по выражению LOWER(text)",
-     "SELECT * FROM chunks WHERE LOWER(text) = 'bert-000123'")
+plan(
+    "3.1 после: индекс по выражению LOWER(text)",
+    "SELECT * FROM chunks WHERE LOWER(text) = 'bert-000123'",
+)
 
 # 3.2 ведущий %
-plan("3.2 до: LIKE '%-000123'",
-     "SELECT * FROM chunks WHERE text LIKE '%-000123'")
-plan("3.2 после: LIKE 'bert-0001%'",
-     "SELECT * FROM chunks WHERE text LIKE 'bert-0001%'")
+plan("3.2 до: LIKE '%-000123'", "SELECT * FROM chunks WHERE text LIKE '%-000123'")
+plan("3.2 после: LIKE 'bert-0001%'", "SELECT * FROM chunks WHERE text LIKE 'bert-0001%'")
 
 # 3.3 арифметика на столбце
-plan("3.3 до: tokens + 100 > 1000",
-     "SELECT * FROM chunks WHERE document_id = 7 AND tokens + 100 > 1000")
-plan("3.3 после: tokens > 900",
-     "SELECT * FROM chunks WHERE document_id = 7 AND tokens > 900")
+plan(
+    "3.3 до: tokens + 100 > 1000",
+    "SELECT * FROM chunks WHERE document_id = 7 AND tokens + 100 > 1000",
+)
+plan("3.3 после: tokens > 900", "SELECT * FROM chunks WHERE document_id = 7 AND tokens > 900")
 # 3.1: LOWER(text) — индекс idx_chunks_text хранит значения text, а не
 #      LOWER(text); значения выражения в нём нет → SCAN. Лечение — индекс по
 #      выражению: в нём лежат именно значения LOWER(text) → SEARCH (<expr>=?).
@@ -164,8 +172,7 @@ plan("3.3 после: tokens > 900",
 #      этот пункт урока надо помнить, даже если SQLite его прощает.
 
 # 3.4 (бонус) другой тип
-plan("3.4 document_id = '7' (строка)",
-     "SELECT * FROM chunks WHERE document_id = '7'")
+plan("3.4 document_id = '7' (строка)", "SELECT * FROM chunks WHERE document_id = '7'")
 
 
 # 4. Частичный индекс: необработанные чанки (~5%)
@@ -174,10 +181,8 @@ print(f"\n4. доля необработанных: {share:.1%}")
 cur.execute("""
     CREATE INDEX idx_unprocessed ON chunks(tokens) WHERE processed = 0
 """)
-plan("4a. попадает: processed = 0",
-     "SELECT id FROM chunks WHERE processed = 0 AND tokens > 500")
-plan("4b. не попадает: processed = 1",
-     "SELECT id FROM chunks WHERE processed = 1 AND tokens > 500")
+plan("4a. попадает: processed = 0", "SELECT id FROM chunks WHERE processed = 0 AND tokens > 500")
+plan("4b. не попадает: processed = 1", "SELECT id FROM chunks WHERE processed = 1 AND tokens > 500")
 # 4a: SEARCH ... COVERING INDEX idx_unprocessed (tokens>?) — условие запроса
 #     содержит processed = 0, то же, что в WHERE индекса, значит все нужные
 #     строки гарантированно в нём есть. COVERING — потому что нужен только id
@@ -191,11 +196,9 @@ plan("4b. не попадает: processed = 1",
 
 
 # 5. ANALYZE
-plan("5. document_id = 7 до ANALYZE",
-     "SELECT * FROM chunks WHERE document_id = 7")
+plan("5. document_id = 7 до ANALYZE", "SELECT * FROM chunks WHERE document_id = 7")
 cur.execute("ANALYZE")
-plan("5. document_id = 7 после ANALYZE",
-     "SELECT * FROM chunks WHERE document_id = 7")
+plan("5. document_id = 7 после ANALYZE", "SELECT * FROM chunks WHERE document_id = 7")
 show("5. sqlite_stat1", "SELECT tbl, idx, stat FROM sqlite_stat1 ORDER BY tbl, idx")
 # План не изменился: и до, и после ANALYZE — SEARCH по idx_chunks_doc_tokens.
 #   Для document_id = 7 есть один подходящий индекс, и эвристика без

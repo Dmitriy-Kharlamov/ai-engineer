@@ -29,31 +29,36 @@ CREATE TABLE chunks (
 )
 """)
 
-cur.executemany("INSERT INTO documents VALUES (?, ?, ?, ?)", [
-    (1, "Attention is all you need", "arxiv", 8400),
-    (2, "BERT", "arxiv", 7200),
-    (3, "Внутренний регламент", "confluence", 1500),
-    (4, "Пустой черновик", "confluence", 0),       # без чанков
-    (5, "README ragkit", "github", None),           # tokens неизвестно
-    (6, "Гайд по деплою", "github", 3000),
-])
+cur.executemany(
+    "INSERT INTO documents VALUES (?, ?, ?, ?)",
+    [
+        (1, "Attention is all you need", "arxiv", 8400),
+        (2, "BERT", "arxiv", 7200),
+        (3, "Внутренний регламент", "confluence", 1500),
+        (4, "Пустой черновик", "confluence", 0),  # без чанков
+        (5, "README ragkit", "github", None),  # tokens неизвестно
+        (6, "Гайд по деплою", "github", 3000),
+    ],
+)
 
 cur.executemany(
-    "INSERT INTO chunks (document_id, text, tokens, author) VALUES (?, ?, ?, ?)", [
-    (1, "Введение", 1000, "Vaswani"),
-    (1, "Архитектура", 1200, "Vaswani"),
-    (1, "Self-attention", 1500, None),
-    (1, "Multi-head", 1800, "Shazeer"),
-    (1, "Эксперименты", 2000, None),
-    (1, "Выводы", 900, "Parmar"),
-    (2, "Pre-training", 3000, "Devlin"),
-    (2, "Fine-tuning", 3500, None),
-    (3, "Правила доступа", 1500, None),
-    (5, "Установка", 400, "Dmitriy"),
-    (5, "Примеры", 600, None),
-    (6, "Docker", 2500, "Dmitriy"),
-    (None, "Сирота без документа", 300, None),     # сирота для задания 3
-])
+    "INSERT INTO chunks (document_id, text, tokens, author) VALUES (?, ?, ?, ?)",
+    [
+        (1, "Введение", 1000, "Vaswani"),
+        (1, "Архитектура", 1200, "Vaswani"),
+        (1, "Self-attention", 1500, None),
+        (1, "Multi-head", 1800, "Shazeer"),
+        (1, "Эксперименты", 2000, None),
+        (1, "Выводы", 900, "Parmar"),
+        (2, "Pre-training", 3000, "Devlin"),
+        (2, "Fine-tuning", 3500, None),
+        (3, "Правила доступа", 1500, None),
+        (5, "Установка", 400, "Dmitriy"),
+        (5, "Примеры", 600, None),
+        (6, "Docker", 2500, "Dmitriy"),
+        (None, "Сирота без документа", 300, None),  # сирота для задания 3
+    ],
+)
 conn.commit()
 
 
@@ -66,10 +71,12 @@ def show(title, sql, params=()):
     print(f"\n{title}")
     for row in cur.execute(sql, params):
         print(row)
+
+
 def plan(title, sql):
     print(f"\nплан: {title}")
     for row in cur.execute("EXPLAIN QUERY PLAN " + sql):
-        print("   ", row[3])          # row[3] — текст шага плана
+        print("   ", row[3])  # row[3] — текст шага плана
 
 
 # 1. Трёхзначная логика
@@ -100,8 +107,8 @@ row = cur.execute("""
     FROM documents
 """).fetchone()
 print("COUNT(*), COUNT(tokens), AVG, AVG(COALESCE):", row)
-assert row[2] == 20100 / 5      # сумма известных tokens / 5 строк с не-NULL
-assert row[3] == 20100 / 6      # та же сумма / все 6 строк (NULL стал 0)
+assert row[2] == 20100 / 5  # сумма известных tokens / 5 строк с не-NULL
+assert row[3] == 20100 / 6  # та же сумма / все 6 строк (NULL стал 0)
 # Объяснение:
 #   COUNT(*) = 6      — считает строки, неважно что в них.
 #   COUNT(tokens) = 5 — пропускает строку, где tokens NULL (документ 5).
@@ -129,7 +136,7 @@ r_not_exists = cur.execute(Q_NOT_EXISTS).fetchall()
 print("\n3. Документы без чанков")
 print("NOT IN:    ", r_not_in)
 print("NOT EXISTS:", r_not_exists)
-assert r_not_in != r_not_exists          # зачёт требует, чтобы разошлись
+assert r_not_in != r_not_exists  # зачёт требует, чтобы разошлись
 # Объяснение:
 #   NOT IN вернул [] — пусто, потому что среди document_id есть NULL
 #   (чанк-сирота), и условие ни для одного документа не может стать TRUE.
@@ -158,8 +165,7 @@ Q_B = """
 """
 show("4A. условие в ON", Q_A)
 show("4B. условие в WHERE", Q_B)
-print("строк A:", len(cur.execute(Q_A).fetchall()),
-      "строк B:", len(cur.execute(Q_B).fetchall()))
+print("строк A:", len(cur.execute(Q_A).fetchall()), "строк B:", len(cur.execute(Q_B).fetchall()))
 # Объяснение (порог 1500 вместо 100 из урока: у нас все чанки > 100,
 # и разница была бы всего в одну строку):
 #   A — 8 строк. Условие в ON фильтрует то, ЧТО присоединяется: к документу
@@ -345,4 +351,4 @@ plan("UNION", Q9_UNION)
 #     дало 8 строк; в WHERE (работает после JOIN) — 5: три документа без
 #     крупных чанков пропали, потому что NULL > 1500 → UNKNOWN.
 
-conn.close()   # пока в конце; дальше будем дописывать задания перед ним
+conn.close()  # пока в конце; дальше будем дописывать задания перед ним

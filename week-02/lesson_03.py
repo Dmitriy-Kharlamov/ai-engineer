@@ -1,9 +1,10 @@
 import random
 import string
 from collections import Counter
+
 from ragkit import Chunk
 
-PUNCT = string.punctuation + "«»—…"     # string.punctuation знает только английские знаки
+PUNCT = string.punctuation + "«»—…"  # string.punctuation знает только английские знаки
 
 
 def char_frequency(text):
@@ -46,9 +47,9 @@ def word_frequency(text, normalize=True):
     freq = {}
     for word in text.split():
         if normalize:
-            word = word.lower().strip(PUNCT)   # регистр + отрезать знаки по краям
+            word = word.lower().strip(PUNCT)  # регистр + отрезать знаки по краям
             if not word:
-                continue                     # от "—" или "..." осталась пустая строка
+                continue  # от "—" или "..." осталась пустая строка
         freq[word] = freq.get(word, 0) + 1
     return freq
 
@@ -84,8 +85,10 @@ def group_anagrams_reference(words):
 
 def check_group_anagrams(trials=500):
     for _ in range(trials):
-        words = ["".join(random.choice("абв") for _ in range(random.randint(1, 3)))
-                 for _ in range(random.randint(0, 10))]
+        words = [
+            "".join(random.choice("абв") for _ in range(random.randint(1, 3)))
+            for _ in range(random.randint(0, 10))
+        ]
         assert group_anagrams(words) == group_anagrams_reference(words), f"вход {words}"
     print(f"group_anagrams: {trials} проверок пройдено")
 
@@ -133,7 +136,7 @@ DOCS = {
 
 def tokenize(text):
     words = [w.lower().strip(PUNCT) for w in text.split()]
-    return [w for w in words if w]           # выкидываем пустые (от «—»)
+    return [w for w in words if w]  # выкидываем пустые (от «—»)
 
 
 def build_index(docs):
@@ -342,11 +345,11 @@ if __name__ == "__main__":
     show_hashability()
     print("разные тексты, равны?", Chunk("привет мир", "a.pdf") == Chunk("пока всем", "b.pdf"))
     a = Chunk("привет мир", "a.pdf")
-    b = Chunk("привет мир", "a.pdf")            # другой объект, тот же текст
-    c = Chunk("пока всем", "b.pdf")             # другой текст, но тоже 2 слова
+    b = Chunk("привет мир", "a.pdf")  # другой объект, тот же текст
+    c = Chunk("пока всем", "b.pdf")  # другой текст, но тоже 2 слова
     d = {a: "первый"}
-    print("d[b] =", d[b])                        # нашли по равному объекту
-    print("d[c] =", d[c])                        # тоже нашли: для словаря c == a
+    print("d[b] =", d[b])  # нашли по равному объекту
+    print("d[c] =", d[c])  # тоже нашли: для словаря c == a
     print("уникальных в {a, b, c}:", len({a, b, c}))
     assert hash(a) == hash(b) == hash(c)
     assert len({a, b, c}) == 1

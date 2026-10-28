@@ -12,8 +12,6 @@ while True:
 print(f"Вы ввели {number}")
 
 
-
-
 # 2
 result = None
 try:
@@ -38,18 +36,18 @@ except (TypeError, ValueError):
     print("Проблема с типом или значением")
 
 if result is not None:
-    print(f"Результат: {result}") 
+    print(f"Результат: {result}")
 
 
 # 3
 def safe_get_if(data, key):
     if key in data:
         return data[key]
-    else:
-        return "не найдено"
+    return "не найдено"
+
 
 print(safe_get_if({"a": 1, "b": 2}, "a"))  # 1
-print(safe_get_if({"a": 1, "b": 2}, "c"))  # не найдено 
+print(safe_get_if({"a": 1, "b": 2}, "c"))  # не найдено
 
 
 def safe_get_try(data, key):
@@ -58,6 +56,7 @@ def safe_get_try(data, key):
     except KeyError:
         return "не найдено"
 
+
 print(safe_get_try({"a": 1, "b": 2}, "a"))  # 1
 print(safe_get_try({"a": 1, "b": 2}, "c"))  # не найдено
 
@@ -65,11 +64,14 @@ print(safe_get_try({"a": 1, "b": 2}, "c"))  # не найдено
 def safe_get_get(data, key):
     return data.get(key, "не найдено")
 
+
 print(safe_get_get({"a": 1, "b": 2}, "a"))  # 1
 print(safe_get_get({"a": 1, "b": 2}, "c"))  # не найдено
 
 # 4
 raw = "0.87 абв 0.94 0.79 ??? 0.88"
+
+
 def parse_scores(raw):
     scores = []
     for item in raw.split():
@@ -98,6 +100,7 @@ def validate_config(config):
     if not isinstance(config["max_tokens"], int):
         raise TypeError("max_tokens должен быть целым числом")
 
+
 configs = [
     {"model": "claude-opus-5", "temperature": 0.7, "max_tokens": 1000},
     {"temperature": 0.7, "max_tokens": 1000},
@@ -113,14 +116,15 @@ for config in configs:
         print(f"{type(e).__name__}: {e}")
 
 
-        
 # 6
 class ChunkTooLargeError(ValueError):
     pass
 
+
 def add_chunk(text, max_size=500):
     if len(text) > max_size:
         raise ChunkTooLargeError(f"Чанк {len(text)} символов, лимит {max_size}")
+
 
 try:
     add_chunk("x" * 600)
@@ -131,7 +135,7 @@ except ChunkTooLargeError as e:
 # 7
 responses = [
     '{"text": "ответ", "score": 0.9}',
-    'не json вовсе',
+    "не json вовсе",
     '{"text": "другой", "score": 0.8}',
     '{"text": "сломан", "score":}',
 ]

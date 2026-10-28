@@ -11,8 +11,10 @@ import httpx
 from pydantic import BaseModel, Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-print(f"pydantic {version('pydantic')}, pydantic-settings {version('pydantic-settings')}, "
-      f"python-dotenv {version('python-dotenv')}")
+print(
+    f"pydantic {version('pydantic')}, pydantic-settings {version('pydantic-settings')}, "
+    f"python-dotenv {version('python-dotenv')}"
+)
 
 # Все опыты — во временной папке и с префиксом L4_, чтобы не задеть настоящий
 # .env репозитория и переменные твоей оболочки.
@@ -34,10 +36,9 @@ def clean_env(prefix="L4_"):
 # 1. Иерархия источников
 # ---------------------------------------------------------------------------
 print("\n1. Иерархия: конструктор > окружение > .env > умолчание")
-env1 = write_env(".env.task1",
-                 "L4_ONLY_FILE=из_файла\n"
-                 "L4_FILE_AND_ENV=из_файла\n"
-                 "L4_INIT_ARG=из_файла\n")
+env1 = write_env(
+    ".env.task1", "L4_ONLY_FILE=из_файла\nL4_FILE_AND_ENV=из_файла\nL4_INIT_ARG=из_файла\n"
+)
 
 
 class Task1(BaseSettings):
@@ -52,10 +53,10 @@ clean_env()
 os.environ["L4_FILE_AND_ENV"] = "из_окружения"
 os.environ["L4_INIT_ARG"] = "из_окружения"
 
-prediction = {                      # прогноз — записан ДО запуска
-    "only_default": "умолчание",    # нигде больше не задана
-    "only_file": "из_файла",        # есть только в .env
-    "file_and_env": "из_окружения", # окружение старше файла
+prediction = {  # прогноз — записан ДО запуска
+    "only_default": "умолчание",  # нигде больше не задана
+    "only_file": "из_файла",  # есть только в .env
+    "file_and_env": "из_окружения",  # окружение старше файла
     "init_arg": "из_конструктора",  # аргумент кода старше всего
 }
 s = Task1(init_arg="из_конструктора")
@@ -109,8 +110,9 @@ class LLMSettings(BaseModel):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="L4_APP_", env_nested_delimiter="__",
-                                      extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="L4_APP_", env_nested_delimiter="__", extra="ignore"
+    )
     api_key: SecretStr
     database_url: str = "sqlite:///dev.db"
     max_retries: int = 3
@@ -118,11 +120,13 @@ class Settings(BaseSettings):
     llm: LLMSettings = LLMSettings()
 
 
-env3 = write_env(".env.task3",
-                 "L4_APP_API_KEY=sk-test-1234567890\n"
-                 "L4_APP_MAX_RETRIES=5\n"
-                 "L4_APP_DEBUG=yes\n"
-                 "L4_APP_LLM__TIMEOUT=60\n")
+env3 = write_env(
+    ".env.task3",
+    "L4_APP_API_KEY=sk-test-1234567890\n"
+    "L4_APP_MAX_RETRIES=5\n"
+    "L4_APP_DEBUG=yes\n"
+    "L4_APP_LLM__TIMEOUT=60\n",
+)
 s = Settings(_env_file=env3)
 print(f"   max_retries = {s.max_retries!r} ({type(s.max_retries).__name__})  ← из строки '5'")
 print(f"   debug       = {s.debug!r} ({type(s.debug).__name__})  ← из строки 'yes'")
@@ -132,7 +136,7 @@ print(f"   api_key     = {s.api_key!r}")
 assert s.max_retries == 5 and s.debug is True and s.llm.timeout == 60.0
 
 try:
-    Settings(_env_file=None)                  # ни файла, ни переменной
+    Settings(_env_file=None)  # ни файла, ни переменной
 except ValidationError as e:
     print("   без L4_APP_API_KEY приложение не стартует:")
     print("   " + str(e).replace("\n", "\n   "))
@@ -215,7 +219,7 @@ class PlainConfig:
 
 @dataclass
 class FixedConfig:
-    api_key: str = field(repr=False)          # не участвует в repr
+    api_key: str = field(repr=False)  # не участвует в repr
     debug: bool = False
 
 
@@ -246,12 +250,12 @@ print("   5.3 трассировка с локальными переменны�
 
 
 def call_api_leaky(settings):
-    key = settings.api_key.get_secret_value()      # распакован в локальную переменную
+    key = settings.api_key.get_secret_value()  # распакован в локальную переменную
     raise ConnectionError("API недоступен")
 
 
 def call_api_safe(settings):
-    secret = settings.api_key                     # остаётся SecretStr
+    secret = settings.api_key  # остаётся SecretStr
     raise ConnectionError("API недоступен")
 
 
@@ -261,7 +265,9 @@ for fn in (call_api_leaky, call_api_safe):
         fn(cfg)
     except ConnectionError as e:
         tb = "".join(traceback.TracebackException.from_exception(e, capture_locals=True).format())
-        line = next(l.strip() for l in tb.splitlines() if l.strip().startswith(("key =", "secret =")))
+        line = next(
+            l.strip() for l in tb.splitlines() if l.strip().startswith(("key =", "secret ="))
+        )
         print(f"      {fn.__name__:15} локальная переменная в отчёте: {line}")
         assert (KEY in line) == (fn is call_api_leaky)
 # capture_locals=True делает то же, что Sentry и rich.traceback(show_locals=True):
@@ -290,8 +296,13 @@ repo.mkdir()
 
 
 def git(*args):
-    out = subprocess.run(["git", "-c", "user.name=demo", "-c", "user.email=demo@example.com",
-                          *args], cwd=repo, capture_output=True, text=True, check=True)
+    out = subprocess.run(
+        ["git", "-c", "user.name=demo", "-c", "user.email=demo@example.com", *args],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
     return out.stdout.strip()
 
 
@@ -306,12 +317,17 @@ git("add", ".gitignore")
 git("commit", "-q", "-m", "remove .env from index")
 
 print("   $ git log --oneline\n      " + git("log", "--oneline").replace("\n", "\n      "))
-print("   $ git ls-files   (что в последнем коммите)\n      " + git("ls-files").replace("\n", "\n      "))
+print(
+    "   $ git ls-files   (что в последнем коммите)\n      "
+    + git("ls-files").replace("\n", "\n      ")
+)
 first = git("rev-list", "--max-parents=0", "HEAD")
 leaked = git("show", f"{first}:.env")
 print(f"   $ git show {first[:7]}:.env\n      {leaked}")
-print("   $ git log --all --full-history --oneline -- .env\n      "
-      + git("log", "--all", "--full-history", "--oneline", "--", ".env").replace("\n", "\n      "))
+print(
+    "   $ git log --all --full-history --oneline -- .env\n      "
+    + git("log", "--all", "--full-history", "--oneline", "--", ".env").replace("\n", "\n      ")
+)
 assert "sk-это-секрет-из-коммита" in leaked
 # git rm --cached убрал .env только из СЛЕДУЮЩИХ коммитов: в последнем его нет
 #   (ls-files), но первый коммит неизменен, и git show <коммит>:.env достаёт
@@ -329,7 +345,9 @@ assert "sk-это-секрет-из-коммита" in leaked
 # ---------------------------------------------------------------------------
 print("\n7. ragkit.config")
 try:
-    from ragkit.config import Settings as RagkitSettings, get_settings
+    from ragkit.config import Settings as RagkitSettings
+    from ragkit.config import get_settings
+
     print("   get_settings() is get_settings():", get_settings() is get_settings())
     print("   ", get_settings())
 except ImportError as e:

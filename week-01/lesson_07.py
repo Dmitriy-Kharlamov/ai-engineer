@@ -1,6 +1,6 @@
 # 1
 numbers = [1, 2, 3, 4, 5]
-print(numbers[0])    
+print(numbers[0])
 print(numbers[-1])
 print(numbers[0:3])
 print(numbers[-2:])
@@ -16,7 +16,6 @@ models.insert(0, "Word2Vec")
 models.pop(2)
 print(models)
 print(len(models))
-
 
 
 # 3
@@ -55,7 +54,7 @@ for token, count in counts.items():
 
 print(f"Самый частый элемент: {most_frequent} (встречается {max_count} раз)")
 
-        
+
 # 5
 numbers = [12, 5, 8, 130, 44, 3, 99]
 new_numbers_1 = [x for x in numbers if x % 2 == 0]
@@ -65,9 +64,6 @@ new_numbers_3 = [x**2 for x in numbers]
 print(new_numbers_1)
 print(new_numbers_2)
 print(new_numbers_3)
-
-
-
 
 
 # 6

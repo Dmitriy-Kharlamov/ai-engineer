@@ -28,8 +28,7 @@ def best_of(func, runs=5):
 # ---------------------------------------------------------------------------
 print("\n1. GitHub API")
 try:
-    r = requests.get("https://api.github.com/repos/Dmitriy-Kharlamov/ai-engineer",
-                     timeout=10)
+    r = requests.get("https://api.github.com/repos/Dmitriy-Kharlamov/ai-engineer", timeout=10)
     print("status:", r.status_code)
     print("Content-Type:", r.headers.get("Content-Type"))
     if r.ok:
@@ -104,7 +103,7 @@ r = requests.get(f"{BASE}/delay/5", timeout=10)
 print(f"timeout=10: status {r.status_code} через {time.perf_counter() - start:.1f} с")
 
 start = time.perf_counter()
-r = requests.get(f"{BASE}/delay/3")          # БЕЗ timeout — только для демонстрации
+r = requests.get(f"{BASE}/delay/3")  # БЕЗ timeout — только для демонстрации
 print(f"без timeout: status {r.status_code} через {time.perf_counter() - start:.1f} с")
 # timeout=2: через ~2 с requests сдался и бросил ReadTimeout — соединение
 #   установилось, но ответ не пришёл за отведённое время.
@@ -221,12 +220,12 @@ stream_path = HERE / "bytes_stream.bin"
 
 r = requests.get(BYTES_URL, timeout=30)
 r.raise_for_status()
-plain_path.write_bytes(r.content)              # всё тело уже в памяти
+plain_path.write_bytes(r.content)  # всё тело уже в памяти
 
 with requests.get(BYTES_URL, stream=True, timeout=30) as r:
     r.raise_for_status()
     with open(stream_path, "wb") as f:
-        for chunk in r.iter_content(chunk_size=8192):   # по 8 КБ за раз
+        for chunk in r.iter_content(chunk_size=8192):  # по 8 КБ за раз
             f.write(chunk)
 
 h_plain = hashlib.sha256(plain_path.read_bytes()).hexdigest()
@@ -268,8 +267,7 @@ body = r.json()
 print("в URL:       url  =", body["url"])
 print("             args =", body["args"])
 
-r = requests.get(f"{BASE}/headers", headers={"Authorization": f"Bearer {SECRET}"},
-                 timeout=10)
+r = requests.get(f"{BASE}/headers", headers={"Authorization": f"Bearer {SECRET}"}, timeout=10)
 print("в заголовке: Authorization =", r.json()["headers"]["Authorization"])
 # В первом случае токен — часть адреса: он виден в url и args, а значит
 #   попадёт в лог доступа веб-сервера, в логи прокси и балансировщиков, в
