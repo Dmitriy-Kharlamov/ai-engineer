@@ -11,25 +11,38 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
+    "fastapi>=0.162",
+    "uvicorn[standard]>=0.53",
 ]
 
 [tool.setuptools]
-packages = ["ragkit"]          # в корне ещё week-*/ и todo/ — явно берём только ragkit
+packages = ["ragkit", "api", "api.routers"]   # в корне ещё week-*/ и todo/ — берём явно
 
 [project.optional-dependencies]
-dev = ["mypy>=2.4", "ruff>=0.17", "pre-commit>=4.0"]
+dev = [
+    "mypy>=2.4",
+    "ruff>=0.17",
+    "pre-commit>=4.0",
+    "pytest>=9.0",
+    "httpx>=0.28",   # клиент в уроках недели 3
+    "httpx2>=2.13",  # starlette 1.x: TestClient работает на httpx2
+]
 
 # ---------------------------------------------------------------------------
 # mypy: строгая проверка пакета ragkit (учебные week-*/ не типизированы)
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.14"
-files = ["ragkit", "week-03/lesson_05.py"]   # lesson_05_any.py — намеренные ошибки
+files = ["ragkit", "api", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py"]   # lesson_05_any.py — намеренные ошибки
 strict = true
 warn_unreachable = true          # НЕ входит в strict: ловит код после return
 show_error_codes = true
 warn_unused_ignores = true       # (входит в strict, пишу явно — это решение, а не случайность)
 plugins = ["pydantic.mypy"]      # понимает конструкторы pydantic-моделей и Settings
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:starlette.*"]
 
 # ---------------------------------------------------------------------------
 # ruff: линтер и форматтер для всего репозитория
