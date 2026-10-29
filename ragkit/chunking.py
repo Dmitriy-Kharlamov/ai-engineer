@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from functools import total_ordering
 from typing import Literal, TypedDict, overload
 
-from .exceptions import ChunkTooLargeError
+from .exceptions import ChunkTooLargeError, EmptyIndexError
 
 # Только эти строки и никакие другие: опечатка "sentense" упадёт в mypy, а не в рантайме.
 SplitMode = Literal["words", "sentences"]
@@ -125,6 +125,12 @@ class Document:
         """Только перебираем — значит, достаточно Iterable: подойдёт и генератор."""
         for chunk in chunks:
             self.add_chunk(chunk)
+
+    def largest_chunk(self) -> Chunk:
+        """Самый большой чанк документа. Пустой документ — EmptyIndexError."""
+        if not self._chunks:
+            raise EmptyIndexError(f"в документе {self.name!r} нет ни одного чанка")
+        return max(self._chunks, key=lambda c: c.tokens)
 
     def total_tokens(self) -> int:
         return sum(chunk.tokens for chunk in self._chunks)
