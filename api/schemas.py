@@ -1,10 +1,32 @@
 """Модели запросов и ответов. Модель входа, модель базы и модель ответа — разные классы."""
 
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, SecretStr
+from pydantic_core import PydanticCustomError
 
 from ragkit import SplitMode
+
+
+class InputModel(BaseModel):
+    """База для моделей ВХОДА: опечатка в имени поля — 422, а не молчаливое умолчание."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+def check_source_name(value: str) -> str:
+    """Имя источника: без пустоты и без путей (../, /), чтобы его можно было класть в файл."""
+    value = value.strip()
+    if not value:
+        raise PydanticCustomError("empty_source", "имя источника не может быть пустым")
+    if "/" in value or "\\" in value or ".." in value:
+        raise PydanticCustomError("source_path", "имя источника не должно содержать путь")
+    return value
+
+
+# Правило как тип: одно определение, две модели (SplitIn.source и DocumentIn.name).
+SourceName = Annotated[str, AfterValidator(check_source_name)]
 
 # --- health -----------------------------------------------------------------
 
@@ -29,9 +51,9 @@ class ConfigOut(BaseModel):
 # --- chunks -----------------------------------------------------------------
 
 
-class SplitIn(BaseModel):
+class SplitIn(InputModel):
     text: str = Field(min_length=1, description="Текст, который нужно нарезать")
-    source: str = Field(examples=["manual.pdf"])
+    source: SourceName = Field(examples=["manual.pdf"])
     max_tokens: int = Field(default=50, ge=1, le=1000)
     mode: SplitMode = Field(
         default="words", description="words — по словам, sentences — по предложениям"
@@ -39,13 +61,15 @@ class SplitIn(BaseModel):
 
 
 class ChunkOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)  # ChunkOut.model_validate(chunk)
+
     text: str
     source: str
     tokens: int
 
 
-class DocumentIn(BaseModel):
-    name: str
+class DocumentIn(InputModel):
+    name: SourceName
     max_chunk_tokens: int = Field(default=50, ge=1)
     texts: list[str] = Field(description="Тексты чанков; может быть пустым — тогда EmptyIndexError")
 
@@ -57,7 +81,7 @@ class DocumentOut(BaseModel):
     largest: ChunkOut
 
 
-class EmbedIn(BaseModel):
+class EmbedIn(InputModel):
     texts: list[str] = Field(min_length=1, max_length=100)
 
 
@@ -69,7 +93,7 @@ class EmbedOut(BaseModel):
 # --- lab: модели для опытов урока -----------------------------------------------
 
 
-class ParamsBody(BaseModel):
+class ParamsBody(InputModel):
     note: str
 
 
@@ -80,7 +104,7 @@ class ParamsOut(BaseModel):
     body: ParamsBody
 
 
-class UserIn(BaseModel):
+class UserIn(InputModel):
     """Что присылает клиент."""
 
     name: str
@@ -108,5 +132,5 @@ class UserOutStrict(BaseModel):
     email: str
 
 
-class Login(BaseModel):
+class Login(InputModel):
     password: SecretStr = Field(min_length=12)

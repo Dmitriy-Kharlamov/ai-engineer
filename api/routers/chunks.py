@@ -10,7 +10,8 @@ router = APIRouter(prefix="/chunks", tags=["chunks"])
 
 
 def to_out(chunk: Chunk) -> ChunkOut:
-    return ChunkOut(text=chunk.text, source=chunk.source, tokens=chunk.tokens)
+    # граница ragkit → API: читаем атрибуты объекта (tokens — свойство) без ручного словаря
+    return ChunkOut.model_validate(chunk)
 
 
 @router.post("", status_code=201, summary="Нарезать текст на чанки")
