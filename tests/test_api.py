@@ -77,3 +77,17 @@ def test_embedder_loaded_once() -> None:
         for _ in range(10):
             assert c.post("/chunks/embed", json={"texts": ["привет"]}).status_code == 200
     assert deps.EMBEDDER_LOADS - before == 1
+
+
+def test_typo_in_field_name_is_422(client: TestClient) -> None:
+    r = client.post("/chunks", json={"text": "a b", "source": "s", "max_token": 1})
+    assert r.status_code == 422
+    err = r.json()["detail"][0]
+    assert err["type"] == "extra_forbidden" and err["loc"] == ["body", "max_token"]
+
+
+def test_error_body_is_whitelisted(client: TestClient) -> None:
+    r = client.post("/chunks", json={"text": "a b", "source": "../secret-path"})
+    err = r.json()["detail"][0]
+    assert set(err) <= {"type", "loc", "msg", "ctx"}
+    assert err["type"] == "source_path" and "../secret-path" not in r.text
