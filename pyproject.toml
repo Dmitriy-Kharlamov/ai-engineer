@@ -33,7 +33,7 @@ dev = [
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.14"
-files = ["ragkit", "api", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py"]   # lesson_05_any.py — намеренные ошибки
+files = ["ragkit", "api", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py"]   # lesson_05_any.py — намеренные ошибки
 strict = true
 warn_unreachable = true          # НЕ входит в strict: ловит код после return
 show_error_codes = true
