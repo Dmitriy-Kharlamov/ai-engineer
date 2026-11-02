@@ -1,32 +1,10 @@
 """Тесты API: pytest -q"""
 
-from collections.abc import Iterator
-
-import pytest
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 
 from api import deps
-from api.main import app
-from ragkit.config import LLMSettings, Settings, get_settings
-
-
-def fake_settings() -> Settings:
-    return Settings(
-        api_key=SecretStr("test-key"),
-        debug=True,
-        max_retries=7,
-        llm=LLMSettings(model="test-model"),
-        _env_file=None,  # не читать настоящий .env
-    )
-
-
-@pytest.fixture
-def client() -> Iterator[TestClient]:
-    app.dependency_overrides[get_settings] = fake_settings
-    with TestClient(app) as c:  # with — чтобы отработал lifespan
-        yield c
-    app.dependency_overrides.clear()
+from api.main import create_app
+from tests.conftest import make_settings
 
 
 def test_health(client: TestClient) -> None:
@@ -66,14 +44,14 @@ def test_ragkit_errors_mapped(client: TestClient) -> None:
     too_big = client.post(
         "/chunks/documents", json={"name": "d", "max_chunk_tokens": 2, "texts": ["a b c"]}
     )
-    assert too_big.status_code == 413 and too_big.json()["error"] == "ChunkTooLargeError"
+    assert too_big.status_code == 422 and too_big.json()["code"] == "chunk_too_large"
     empty = client.post("/chunks/documents", json={"name": "d", "texts": []})
-    assert empty.status_code == 422 and empty.json()["error"] == "EmptyIndexError"
+    assert empty.status_code == 422 and empty.json()["code"] == "empty_index"
 
 
 def test_embedder_loaded_once() -> None:
     before = deps.EMBEDDER_LOADS
-    with TestClient(app) as c:
+    with TestClient(create_app(make_settings())) as c:
         for _ in range(10):
             assert c.post("/chunks/embed", json={"texts": ["привет"]}).status_code == 200
     assert deps.EMBEDDER_LOADS - before == 1
