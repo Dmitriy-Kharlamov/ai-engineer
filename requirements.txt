@@ -7,7 +7,9 @@ certifi==2026.7.22
 cfgv==3.5.0
 charset-normalizer==3.5.2
 click==8.5.0
+coverage==7.17.0
 distlib==0.4.4
+execnet==2.1.2
 fastapi==0.162.0
 filelock==4.2.4
 h11==0.16.0
@@ -38,10 +40,14 @@ pydantic_core==2.50.1
 Pygments==2.21.0
 PyJWT==2.15.1
 pytest==9.2.0
+pytest-cov==7.1.0
+pytest-randomly==5.0.0
+pytest-xdist==3.8.0
 python-dateutil==2.9.0.post0
 python-discovery==1.6.7
 python-dotenv==1.2.4
 PyYAML==6.0.3
+-e git+ssh://git@github.com/Dmitriy-Kharlamov/ai-engineer.git@533ae043fc0911259b737285a2b58b28ae55608e#egg=ragkit
 requests==2.34.2
 ruff==0.17.3
 six==1.17.0
