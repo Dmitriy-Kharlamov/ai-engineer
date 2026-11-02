@@ -134,3 +134,58 @@ class UserOutStrict(BaseModel):
 
 class Login(InputModel):
     password: SecretStr = Field(min_length=12)
+
+
+# --- auth, документы, админка (Ф3-08) -------------------------------------------
+
+
+class RegisterIn(InputModel):
+    username: SourceName = Field(min_length=3, max_length=32)
+    password: SecretStr = Field(min_length=8)
+
+
+class LoginIn(InputModel):
+    username: str
+    password: SecretStr
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int = Field(description="Секунд до истечения")
+
+
+class PrincipalOut(BaseModel):
+    name: str
+    roles: list[str]
+
+
+class DocumentCreateIn(InputModel):
+    name: SourceName
+    text: str = Field(min_length=1)
+
+
+class StoredDocumentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    text: str
+
+
+class KeyIssueIn(InputModel):
+    name: str = Field(min_length=1)
+    roles: list[str] = Field(default_factory=list)
+
+
+class KeyIssueOut(BaseModel):
+    name: str
+    key: str = Field(description="Показывается один раз; на сервере хранится только sha256")
+
+
+class DbStatsOut(BaseModel):
+    documents: int
+    sessions_opened: int
+    commits: int
+    rollbacks: int
+    closed: int

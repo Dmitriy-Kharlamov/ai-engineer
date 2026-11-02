@@ -9,6 +9,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from ragkit import ChunkTooLargeError, EmptyIndexError, RAGError
+from services.documents import DocumentLimitError
+from services.users import UserExistsError
 
 # Белый список, а не чёрный: в ответ попадает только то, что перечислено.
 SAFE_ERROR_KEYS = ("type", "loc", "msg")
@@ -40,19 +42,30 @@ async def validation_handler(request: Request, exc: Exception) -> JSONResponse:
 Handler = Callable[[Request, Exception], Awaitable[JSONResponse]]
 
 
-def _ragkit_error(status_code: int) -> Handler:
+def _domain_error(status_code: int, code: str) -> Handler:
+    """Стабильный код ошибки для клиента: не зависит от имени класса в Python."""
+
     async def handler(request: Request, exc: Exception) -> JSONResponse:
-        return JSONResponse(
-            status_code=status_code,
-            content={"detail": str(exc), "error": type(exc).__name__},
-        )
+        return JSONResponse(status_code=status_code, content={"detail": str(exc), "code": code})
 
     return handler
 
 
+# исключение → (HTTP-статус, стабильный код). Порядок: от частного к общему.
+DOMAIN_ERRORS: list[tuple[type[Exception], int, str]] = [
+    # 422, а не 413: 413 Content Too Large — про размер ТЕЛА запроса целиком, его выдаёт
+    # прокси или сервер до разбора, и клиенты/балансировщики обрабатывают его особо (часто
+    # рвут соединение). Здесь тело принято и разобрано, а не прошёл смысловой лимит на
+    # один чанк — это ошибка содержимого, то есть 422 со своим кодом.
+    (ChunkTooLargeError, 422, "chunk_too_large"),
+    (EmptyIndexError, 422, "empty_index"),
+    (RAGError, 400, "rag_error"),
+    (UserExistsError, 409, "user_exists"),
+    (DocumentLimitError, 409, "document_limit"),
+]
+
+
 def install_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_handler)
-    # от частного к общему: FastAPI ищет обработчик по MRO исключения
-    app.add_exception_handler(ChunkTooLargeError, _ragkit_error(413))
-    app.add_exception_handler(EmptyIndexError, _ragkit_error(422))
-    app.add_exception_handler(RAGError, _ragkit_error(400))
+    for exc_type, status_code, code in DOMAIN_ERRORS:
+        app.add_exception_handler(exc_type, _domain_error(status_code, code))

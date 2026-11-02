@@ -1,13 +1,24 @@
-"""Опыты урока Ф3-06: источники параметров, def против async def, утечки."""
+"""Учебные эндпоинты (Ф3-06, Ф3-08). Подключаются только при settings.debug=True."""
 
 import asyncio
 import threading
 import time
 from typing import Annotated
 
-from fastapi import APIRouter, Header, Path, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Query
 
-from api.schemas import Login, ParamsBody, ParamsOut, UserDB, UserIn, UserOut, UserOutStrict
+from api.deps import get_users
+from api.schemas import (
+    Login,
+    LoginIn,
+    ParamsBody,
+    ParamsOut,
+    UserDB,
+    UserIn,
+    UserOut,
+    UserOutStrict,
+)
+from services.users import UserStore
 
 router = APIRouter(prefix="/lab", tags=["lab"])
 
@@ -92,3 +103,14 @@ async def create_user(user: UserIn) -> UserDB:  # response_model фильтру�
 @router.post("/users-missing", response_model=UserOutStrict)
 async def create_user_missing(user: UserIn) -> UserDB:  # в UserDB нет email
     return _load_user(user)
+
+
+# --- Ф3-08, задание 6: вход БЕЗ выравнивания времени — только для замера «до» ---------
+@router.post("/login-naive")
+def login_naive(body: LoginIn, users: Annotated[UserStore, Depends(get_users)]) -> dict[str, bool]:
+    user = users.authenticate(
+        body.username, body.password.get_secret_value(), equalize_timing=False
+    )
+    if user is None:
+        raise HTTPException(401, "неверный логин или пароль")
+    return {"ok": True}
