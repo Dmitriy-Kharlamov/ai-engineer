@@ -1,12 +1,23 @@
 """401 / 403 / 404, защита роутера, JWT, ограничение частоты."""
 
+import secrets
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from api.security import create_access_token, decode_access_token
 from services.apikeys import ApiKeyStore
+
+OTHER_SECRET = "другой-секрет-той-же-длины-32-байта!"  # >= 32 байт: иначе InsecureKeyLengthWarning
+
+
+def tamper(token: str) -> str:
+    """Тот же заголовок и payload, подпись чужим ключом — отличается всегда, а не почти всегда."""
+    payload = jwt.decode(token, options={"verify_signature": False})
+    return jwt.encode(payload, OTHER_SECRET, algorithm="HS256")
 
 
 def keys(app: FastAPI) -> ApiKeyStore:
@@ -48,8 +59,8 @@ def test_foreign_document_is_404(client: TestClient) -> None:
 def test_jwt_expired_and_tampered(client: TestClient) -> None:
     headers = login(client, "carol")
     token = headers["Authorization"].removeprefix("Bearer ")
-    tampered = token[:-2] + ("AA" if not token.endswith("AA") else "BB")
-    assert client.get("/me", headers={"Authorization": f"Bearer {tampered}"}).status_code == 401
+    r = client.get("/me", headers={"Authorization": f"Bearer {tamper(token)}"})
+    assert r.status_code == 401 and r.json()["detail"] == "токен недействителен"
     secret = client.app.state.jwt_secret  # type: ignore[attr-defined]
     old = jwt.encode(
         {"sub": "carol", "exp": datetime.now(UTC) - timedelta(minutes=1)}, secret, algorithm="HS256"
@@ -71,3 +82,13 @@ def test_unknown_ctx_key_is_dropped() -> None:
 
     err = {"type": "x", "loc": ("a",), "msg": "m", "input": "s", "ctx": {"got": "s", "ge": 1}}
     assert safe_error(err) == {"type": "x", "loc": ("a",), "msg": "m", "ctx": {"ge": 1}}
+
+
+def test_tamper_always_breaks_signature() -> None:
+    for i in range(1000):  # каждый раз новый секрет, как новый процесс в разработке
+        secret = secrets.token_urlsafe(32)
+        token = create_access_token(f"user{i}", frozenset({"user"}), secret, ttl_minutes=15)
+        bad = tamper(token)
+        assert bad.rsplit(".", 1)[0] == token.rsplit(".", 1)[0]  # меняется только подпись
+        with pytest.raises(jwt.InvalidSignatureError, match="Signature verification failed"):
+            decode_access_token(bad, secret)
