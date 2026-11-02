@@ -1,6 +1,7 @@
 """Тесты API: pytest"""
 
 from collections.abc import Callable
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError
 from typing import Any
 
@@ -15,10 +16,17 @@ from ragkit import Embedder, HashEmbedder
 from ragkit.config import Settings
 
 
-def test_health(client: TestClient) -> None:
+def test_health(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Версию задаём сами: тест не зависит от того, установлен ли пакет в этом окружении,
+    # и ловит и "unknown" вместо версии, и опечатку в имени пакета (KeyError -> 500).
+    monkeypatch.setattr(health, "version", {"ragkit": "9.9.9"}.__getitem__)
+    before = datetime.now(UTC)
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["ragkit_version"] == "9.9.9"
+    assert datetime.fromisoformat(body["started_at"]) <= before  # lifespan отработал раньше
 
 
 def test_health_survives_missing_metadata(
@@ -96,12 +104,14 @@ def test_embedder_loaded_once(app: FastAPI) -> None:
 
     def counting_loader(dim: int = 128) -> Embedder:
         loads.append(dim)
-        return HashEmbedder(dim=dim)
+        return HashEmbedder(dim=3)  # метка: запросы обязаны получить именно этот объект
 
     app.dependency_overrides[deps.load_embedder] = counting_loader
     with TestClient(app) as c:
         for _ in range(10):
-            assert c.post("/chunks/embed", json={"texts": ["привет"]}).status_code == 200
+            r = c.post("/chunks/embed", json={"texts": ["привет"]})
+            assert r.status_code == 200
+            assert r.json()["dim"] == 3  # иначе эмбеддер создан в обход загрузчика
     assert loads == [128]  # ровно одна загрузка, и с размерностью из lifespan
 
 
