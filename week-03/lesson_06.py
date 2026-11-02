@@ -20,7 +20,7 @@ from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
 from api import deps
-from api.main import app
+from api.main import create_app
 from ragkit.config import LLMSettings, Settings, get_settings
 
 
@@ -47,6 +47,16 @@ def test_settings() -> Settings:
         llm=LLMSettings(model="подменённая-модель"),
         _env_file=None,
     )
+
+
+# С Ф3-08 приложение собирает фабрика, а /lab подключается только при debug=True.
+LESSON_SETTINGS = Settings(api_key=SecretStr("lesson-key"), debug=True, _env_file=None)
+app = create_app(LESSON_SETTINGS)
+
+
+def restore_settings() -> None:
+    """Вернуть настройки приложения после опыта с подменой (вместо .clear())."""
+    app.dependency_overrides[get_settings] = lambda: LESSON_SETTINGS
 
 
 # ===========================================================================
@@ -286,7 +296,7 @@ def task8() -> None:
             show("GET /health/config с подменой", c.get("/health/config"))
             assert c.get("/health/config").json()["llm_model"] == "подменённая-модель"
     finally:
-        app.dependency_overrides.clear()
+        restore_settings()
 
 
 # Обработчик ничего не знает о подмене, но вернул «подменённая-модель» и max_retries=7 —
@@ -338,6 +348,7 @@ def task10(c: TestClient) -> None:
     )
 
 
+# (С Ф3-08 ответ другой: 422 и стабильный code — решение про 413 пересмотрено там.)
 # ChunkTooLargeError → 413 Content Too Large (часть запроса больше допустимого),
 #   EmptyIndexError → 422 (запрос корректен по форме, но обработать нечего), общий RAGError →
 #   400. Перевод живёт в api/errors.py: ragkit поднимает свои исключения и не знает, что
@@ -374,7 +385,7 @@ def main() -> None:
     with TestClient(app) as c:
         for step in steps:
             step(c)
-    app.dependency_overrides.clear()
+    restore_settings()
     task3()
     task4()
     task5()

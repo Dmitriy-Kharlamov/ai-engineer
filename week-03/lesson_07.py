@@ -27,9 +27,12 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
-from api.main import app
+from api.main import create_app
 from api.schemas import DocumentIn, SourceName, SplitIn
 from ragkit import Chunk, ChunkDict
+from ragkit.config import Settings
+
+app = create_app(Settings(api_key=SecretStr("lesson-key"), _env_file=None))
 
 
 def first_error(exc: ValidationError) -> str:
@@ -543,10 +546,10 @@ def task10() -> None:
 #     принимает — пришлось бы писать свой __init__ поверх pydantic или переписывать всех
 #     вызывающих.
 #   Довод «за» про frozen и сагу __eq__/__hash__ — сильный, но его закрывает и
-#     стандартный frozen dataclass (он в 2–3 раза дороже обычного класса, потому что
-#     пишет поля через object.__setattr__), причём лучше: он позволяет исключить metadata
-#     из сравнения и хеша (compare=False, hash=False), а frozen pydantic с полем dict
-#     нехешируем вовсе (задание 7). Зависимость от pydantic, наоборот, не довод «против»:
+#     стандартный frozen dataclass (в моих прогонах от 1,5 до 2,6 раза дороже обычного
+#     класса, потому что пишет поля через object.__setattr__), причём лучше: он позволяет
+#     исключить metadata из сравнения и хеша (compare=False, hash=False), а frozen
+#     pydantic с полем dict нехешируем вовсе (задание 7). Зависимость от pydantic, наоборот, не довод «против»:
 #     ragkit уже тянет её через config.py.
 # Что делать с to_dict() и сериализацией: оставить to_dict() -> ChunkDict (TypedDict из
 #   Ф3-05) как единственный формат «чанк как данные». JSON — через TypeAdapter(ChunkDict)
