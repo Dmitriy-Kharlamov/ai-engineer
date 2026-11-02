@@ -28,6 +28,9 @@ dev = [
     "pytest>=9.0",
     "httpx>=0.28",   # клиент в уроках недели 3
     "httpx2>=2.13",  # starlette 1.x: TestClient работает на httpx2
+    "pytest-randomly>=5.0",  # случайный порядок тестов
+    "pytest-xdist>=3.8",  # pytest -n 4
+    "pytest-cov>=7.0",  # --cov --cov-branch
 ]
 
 # ---------------------------------------------------------------------------
@@ -35,7 +38,7 @@ dev = [
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.14"
-files = ["ragkit", "api", "services", "tools", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py"]   # lesson_05_any.py — намеренные ошибки
+files = ["ragkit", "api", "services", "tools", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py", "week-03/lesson_09"]   # lesson_05_any.py — намеренные ошибки
 strict = true
 warn_unreachable = true          # НЕ входит в strict: ловит код после return
 show_error_codes = true
@@ -44,7 +47,15 @@ plugins = ["pydantic.mypy"]      # понимает конструкторы pyd
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-filterwarnings = ["ignore::DeprecationWarning:starlette.*"]
+addopts = "-q --strict-markers --strict-config"
+# Все предупреждения — ошибки; исключения поштучно, по тексту сообщения.
+filterwarnings = [
+    "error",
+    # starlette < 1.10 (замерено на 1.6.0) обращается к anyio.abc.BlockingPortal.
+    # В starlette 1.10 из requirements.txt предупреждения нет — игнор только для старых окружений.
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
+]
+markers = ["slow: тест дольше секунды"]
 
 # ---------------------------------------------------------------------------
 # ruff: линтер и форматтер для всего репозитория

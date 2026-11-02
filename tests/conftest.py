@@ -31,7 +31,7 @@ def pytest_report_header() -> str:
 
 def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
     installed, text = environment_report()
-    if not installed:  # при -q шапки нет, поэтому о неустановленном пакете — ещё и в итоге
+    if not installed and terminalreporter.verbosity < 0:  # при -q шапки нет — пишем в итог
         terminalreporter.write_sep("-", "окружение")
         terminalreporter.write_line(text)
 
