@@ -7,7 +7,9 @@
 | Путь | Что там |
 |---|---|
 | `ragkit/` | пакет: `Chunk`, `PDFChunk`, `Document`, эмбеддеры, исключения, настройки (`config.py`) |
-| `api/` | HTTP-сервис на FastAPI поверх `ragkit` |
+| `api/` | HTTP-слой на FastAPI: роутеры, схемы, зависимости, безопасность |
+| `services/` | бизнес-логика: пользователи, ключи, документы, ограничитель; про HTTP не знает |
+| `tools/` | `check_layers.py` — проверка направления импортов `api → services → ragkit` |
 | `tests/` | тесты (`pytest`) |
 | `week-01/` | неделя 1 — основы Python, ООП, файлы, исключения |
 | `week-02/` | неделя 2 — алгоритмы, хеш-таблицы, SQL, строки, сортировки, NumPy/Pandas, Linux |
@@ -45,7 +47,7 @@ python week-03/lesson_04.py       # любой урок
 ## API
 
 ```bash
-uvicorn api.main:app --reload     # http://127.0.0.1:8000/docs
+uvicorn api.main:create_app --factory --reload   # http://127.0.0.1:8000/docs
 pytest -q                         # тесты
 mypy && ruff check .              # строгие типы для ragkit/, api/, tests/ и линтер
 ```
@@ -57,4 +59,8 @@ mypy && ruff check .              # строгие типы для ragkit/, api/
 | `POST /chunks` | нарезать текст на чанки (`mode`: `words` / `sentences`) |
 | `POST /chunks/documents` | собрать документ и найти самый большой чанк |
 | `POST /chunks/embed` | эмбеддинги текстов (модель загружается один раз в `lifespan`) |
-| `/lab/*` | учебные эндпоинты урока Ф3-06 |
+| `POST /auth/register`, `POST /auth/login` | регистрация (bcrypt) и вход (JWT на 15 минут) |
+| `GET /me`, `GET /me/key` | кто я: по JWT / по API-ключу (с ограничением частоты) |
+| `POST /documents`, `GET /documents/{id}` | свои документы; чужой — 404 |
+| `/admin/*` | только API-ключ с ролью `admin` (защита на уровне роутера) |
+| `/lab/*` | учебные эндпоинты; есть только при `APP_DEBUG=true` |
