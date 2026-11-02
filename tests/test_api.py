@@ -1,9 +1,13 @@
 """Тесты API: pytest -q"""
 
+from importlib.metadata import PackageNotFoundError
+
+import pytest
 from fastapi.testclient import TestClient
 
 from api import deps
 from api.main import create_app
+from api.routers import health
 from tests.conftest import make_settings
 
 
@@ -69,3 +73,15 @@ def test_error_body_is_whitelisted(client: TestClient) -> None:
     err = r.json()["detail"][0]
     assert set(err) <= {"type", "loc", "msg", "ctx"}
     assert err["type"] == "source_path" and "../secret-path" not in r.text
+
+
+def test_health_survives_missing_metadata(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def not_installed(name: str) -> str:
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr(health, "version", not_installed)  # как в свежем клоне без pip install
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["ragkit_version"] == "unknown"

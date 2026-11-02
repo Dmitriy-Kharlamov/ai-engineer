@@ -1,12 +1,39 @@
 from collections.abc import Iterator
+from importlib.metadata import PackageNotFoundError, distribution
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
+import ragkit
 from api.main import create_app
 from ragkit.config import LLMSettings, Settings
+
+
+def environment_report() -> tuple[bool, str]:
+    """Честная диагностика: установлен ли пакет и откуда на самом деле импортирован код."""
+    code = Path(ragkit.__file__).parent
+    try:
+        dist = distribution("ragkit")
+    except PackageNotFoundError:
+        return False, (
+            f"ragkit: метаданных пакета нет, код импортирован из {code}. "
+            "/health отдаст ragkit_version='unknown'. Чтобы было как в проде: pip install -e ."
+        )
+    return True, f"ragkit {dist.version}: пакет установлен, код импортирован из {code}"
+
+
+def pytest_report_header() -> str:
+    return environment_report()[1]  # шапка; при -q не печатается
+
+
+def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
+    installed, text = environment_report()
+    if not installed:  # при -q шапки нет, поэтому о неустановленном пакете — ещё и в итоге
+        terminalreporter.write_sep("-", "окружение")
+        terminalreporter.write_line(text)
 
 
 def make_settings(**overrides: object) -> Settings:
