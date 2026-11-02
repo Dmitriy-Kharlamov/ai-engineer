@@ -37,7 +37,12 @@ class Settings(BaseSettings):
     api_key: SecretStr  # обязательно: без него не стартуем
     database_url: str = "sqlite:///dev.db"
     max_retries: int = 3
-    debug: bool = False
+    debug: bool = False  # True включает учебный роутер /lab
+    jwt_secret: SecretStr | None = None  # None → случайный на процесс (только для разработки)
+    jwt_ttl_minutes: int = 15
+    bcrypt_rounds: int = 12
+    rate_limit_per_minute: int = 60
+    max_documents_per_owner: int = 100
     llm: LLMSettings = LLMSettings()
 
 
