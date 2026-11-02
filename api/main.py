@@ -6,7 +6,7 @@
 """
 
 import secrets
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 
@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from api import deps
 from api.errors import install_error_handlers
 from api.routers import admin, auth, chunks, documents, health, lab, me
+from ragkit import Embedder
 from ragkit.config import Settings, get_settings
 from services.apikeys import ApiKeyStore
 from services.db import Database
@@ -28,8 +29,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.started_at = datetime.now(UTC)
-        app.state.loads_before = deps.EMBEDDER_LOADS
-        app.state.embedder = deps.load_embedder(dim=128)  # один раз за запуск
+        # Загрузчик подменяем тем же механизмом, что и зависимости: тест кладёт
+        # свою функцию в app.dependency_overrides[load_embedder] и сам считает вызовы.
+        load: Callable[..., Embedder] = app.dependency_overrides.get(
+            deps.load_embedder, deps.load_embedder
+        )
+        app.state.embedder = load(dim=128)  # один раз за запуск
         app.state.db = Database()
         app.state.users = UserStore(rounds=cfg.bcrypt_rounds)
         app.state.api_keys = ApiKeyStore()

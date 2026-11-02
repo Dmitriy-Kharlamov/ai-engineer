@@ -21,6 +21,7 @@ from pydantic import SecretStr
 
 from api import deps
 from api.main import create_app
+from ragkit import Embedder
 from ragkit.config import LLMSettings, Settings, get_settings
 
 
@@ -310,21 +311,30 @@ def task8() -> None:
 # ===========================================================================
 def task9() -> None:
     print("\n9. Lifespan: 10 запросов к /chunks/embed")
-    before = deps.EMBEDDER_LOADS
-    with TestClient(app) as c:
-        for _ in range(10):
-            c.post("/chunks/embed", json={"texts": ["привет", "мир"]})
-        loads = deps.EMBEDDER_LOADS - before
-        print(f"   запросов: 10, создано эмбеддеров за этот запуск сервиса: {loads}")
-        health = show("GET /health после 10 запросов", c.get("/health"))
-    assert loads == 1 and health["embedder_loads"] == 1
+    loads: list[int] = []  # счётчик живёт здесь, а не глобальной переменной в api/deps.py
+
+    def counting_loader(dim: int = 128) -> Embedder:
+        loads.append(dim)
+        return deps.load_embedder(dim)
+
+    app.dependency_overrides[deps.load_embedder] = counting_loader  # Ф3-09, задание 7
+    try:
+        with TestClient(app) as c:
+            for _ in range(10):
+                c.post("/chunks/embed", json={"texts": ["привет", "мир"]})
+            print(f"   запросов: 10, создано эмбеддеров за этот запуск сервиса: {len(loads)}")
+            show("GET /health после 10 запросов", c.get("/health"))
+    finally:
+        del app.dependency_overrides[deps.load_embedder]
+    assert len(loads) == 1
 
 
 # load_embedder вызывается в lifespan, до первого запроса, и кладёт объект в app.state.
-#   Эндпоинты берут его через Depends(get_embedder) — 10 запросов, одно создание; /health
-#   показывает то же самое изнутри сервиса. Счётчик считается «за этот запуск»: в скрипте
-#   сервис стартует несколько раз (каждый `with TestClient(app)` и uvicorn в задании 3 —
-#   это отдельный запуск lifespan), и в каждом запуске эмбеддер создаётся ровно один раз.
+#   Эндпоинты берут его через Depends(get_embedder) — 10 запросов, одно создание. Счётчик
+#   — подменённый загрузчик (Ф3-09: глобального EMBEDDER_LOADS в api/deps.py больше нет),
+#   и считает он «за этот запуск»: в скрипте сервис стартует несколько раз (каждый
+#   `with TestClient(app)` и uvicorn в задании 3 — это отдельный запуск lifespan), и в
+#   каждом запуске эмбеддер создаётся ровно один раз.
 
 
 # ===========================================================================

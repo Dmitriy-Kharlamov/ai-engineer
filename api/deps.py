@@ -18,13 +18,13 @@ from services.documents import DocumentRepo
 from services.ratelimit import RateLimiter
 from services.users import UserStore
 
-EMBEDDER_LOADS = 0  # сколько раз создавался эмбеддер — доказательство для Ф3-06, задание 9
-
 
 def load_embedder(dim: int = 128) -> Embedder:
-    """«Тяжёлая» загрузка модели. Вызывается в lifespan ровно один раз."""
-    global EMBEDDER_LOADS
-    EMBEDDER_LOADS += 1
+    """«Тяжёлая» загрузка модели. Вызывается в lifespan ровно один раз.
+
+    Тесты считают загрузки, подменяя эту функцию через app.dependency_overrides:
+    счётчик живёт в тесте, а не глобальной переменной в продакшн-коде.
+    """
     return HashEmbedder(dim=dim)
 
 

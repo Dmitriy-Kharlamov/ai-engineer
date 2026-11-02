@@ -35,9 +35,6 @@ class HealthOut(BaseModel):
     status: str = Field(examples=["ok"])
     ragkit_version: str = Field(description="Версия установленного пакета ragkit")
     started_at: datetime = Field(description="Когда сервис стартовал (UTC)")
-    embedder_loads: int = Field(
-        description="Сколько раз создавался эмбеддер за этот запуск; ровно 1"
-    )
 
 
 class ConfigOut(BaseModel):

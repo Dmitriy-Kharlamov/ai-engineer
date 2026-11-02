@@ -1,14 +1,18 @@
-"""Тесты API: pytest -q"""
+"""Тесты API: pytest"""
 
+from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError
+from typing import Any
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api import deps
 from api.main import create_app
 from api.routers import health
-from tests.conftest import make_settings
+from ragkit import Embedder, HashEmbedder
+from ragkit.config import Settings
 
 
 def test_health(client: TestClient) -> None:
@@ -17,9 +21,26 @@ def test_health(client: TestClient) -> None:
     assert r.json()["status"] == "ok"
 
 
+def test_health_survives_missing_metadata(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def not_installed(name: str) -> str:
+        raise PackageNotFoundError(name)
+
+    monkeypatch.setattr(health, "version", not_installed)  # как в свежем клоне без pip install
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["ragkit_version"] == "unknown"
+
+
 def test_settings_override(client: TestClient) -> None:
     r = client.get("/health/config")
     assert r.json() == {"llm_model": "test-model", "debug": True, "max_retries": 7}
+
+
+def test_lab_exists_only_in_debug(settings_factory: Callable[..., Settings]) -> None:
+    with TestClient(create_app(settings_factory(debug=False))) as c:
+        assert c.post("/lab/users", json={"name": "d", "password": "pw"}).status_code == 404
 
 
 def test_literal_typo_is_422(client: TestClient) -> None:
@@ -38,27 +59,50 @@ def test_password_not_echoed_but_error_useful(client: TestClient) -> None:
     assert err["ctx"]["min_length"] == 12
 
 
-def test_response_model_filters(client: TestClient) -> None:
-    user = {"name": "d", "password": "pw"}
-    assert "password_hash" in client.post("/lab/users-leak", json=user).json()
-    assert client.post("/lab/users", json=user).json() == {"name": "d"}
+# ids латиницей: кириллические id pytest экранирует, и в выводе -v видно "\u0447\u0430..."
+@pytest.mark.parametrize(
+    ("path", "keys"),
+    [
+        ("/lab/users-leak", {"name", "password_hash", "internal_id"}),
+        ("/lab/users", {"name"}),
+    ],
+    ids=[
+        "leak-without-response-model",
+        "response-model-filters",
+    ],  # ASCII: кириллицу pytest выводит как \\u0431...
+)
+def test_response_model_filters(client: TestClient, path: str, keys: set[str]) -> None:
+    body = client.post(path, json={"name": "d", "password": "pw"}).json()
+    assert set(body) == keys
+    assert body["name"] == "d"
 
 
-def test_ragkit_errors_mapped(client: TestClient) -> None:
-    too_big = client.post(
-        "/chunks/documents", json={"name": "d", "max_chunk_tokens": 2, "texts": ["a b c"]}
-    )
-    assert too_big.status_code == 422 and too_big.json()["code"] == "chunk_too_large"
-    empty = client.post("/chunks/documents", json={"name": "d", "texts": []})
-    assert empty.status_code == 422 and empty.json()["code"] == "empty_index"
+@pytest.mark.parametrize(
+    ("body", "code"),
+    [
+        ({"name": "d", "max_chunk_tokens": 2, "texts": ["a b c"]}, "chunk_too_large"),
+        ({"name": "d", "texts": []}, "empty_index"),
+    ],
+    ids=["chunk-too-large", "empty-document"],
+)
+def test_ragkit_errors_mapped(client: TestClient, body: dict[str, Any], code: str) -> None:
+    r = client.post("/chunks/documents", json=body)
+    assert r.status_code == 422
+    assert r.json()["code"] == code
 
 
-def test_embedder_loaded_once() -> None:
-    before = deps.EMBEDDER_LOADS
-    with TestClient(create_app(make_settings())) as c:
+def test_embedder_loaded_once(app: FastAPI) -> None:
+    loads: list[int] = []  # счётчик живёт в тесте: другие тесты его не видят и не двигают
+
+    def counting_loader(dim: int = 128) -> Embedder:
+        loads.append(dim)
+        return HashEmbedder(dim=dim)
+
+    app.dependency_overrides[deps.load_embedder] = counting_loader
+    with TestClient(app) as c:
         for _ in range(10):
             assert c.post("/chunks/embed", json={"texts": ["привет"]}).status_code == 200
-    assert deps.EMBEDDER_LOADS - before == 1
+    assert loads == [128]  # ровно одна загрузка, и с размерностью из lifespan
 
 
 def test_typo_in_field_name_is_422(client: TestClient) -> None:
@@ -73,15 +117,3 @@ def test_error_body_is_whitelisted(client: TestClient) -> None:
     err = r.json()["detail"][0]
     assert set(err) <= {"type", "loc", "msg", "ctx"}
     assert err["type"] == "source_path" and "../secret-path" not in r.text
-
-
-def test_health_survives_missing_metadata(
-    client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def not_installed(name: str) -> str:
-        raise PackageNotFoundError(name)
-
-    monkeypatch.setattr(health, "version", not_installed)  # как в свежем клоне без pip install
-    r = client.get("/health")
-    assert r.status_code == 200
-    assert r.json()["ragkit_version"] == "unknown"

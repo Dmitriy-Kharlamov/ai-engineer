@@ -72,7 +72,7 @@ def test_jwt_expired_and_tampered(client: TestClient) -> None:
 def test_rate_limit_429(client: TestClient, app: FastAPI) -> None:
     key = keys(app).issue("dave", frozenset())
     codes = [client.get("/me/key", headers={"X-API-Key": key}).status_code for _ in range(4)]
-    assert codes == [200, 200, 200, 429]  # лимит в make_settings — 3 в минуту
+    assert codes == [200, 200, 200, 429]  # лимит в settings_factory — 3 в минуту
     r = client.get("/me/key", headers={"X-API-Key": key})
     assert 1 <= int(r.headers["Retry-After"]) <= 60
 

@@ -4,7 +4,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from api import deps
 from api.schemas import ConfigOut, HealthOut
 from ragkit.config import Settings, get_settings
 
@@ -28,12 +27,10 @@ def ragkit_version() -> str:
 @router.get("", summary="Жив ли сервис")
 async def health(request: Request) -> HealthOut:
     started_at: datetime = request.app.state.started_at
-    loads_before: int = request.app.state.loads_before
     return HealthOut(
         status="ok",
         ragkit_version=ragkit_version(),
         started_at=started_at,
-        embedder_loads=deps.EMBEDDER_LOADS - loads_before,
     )
 
 
