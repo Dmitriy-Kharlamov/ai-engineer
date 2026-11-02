@@ -92,3 +92,18 @@ def test_tamper_always_breaks_signature() -> None:
         assert bad.rsplit(".", 1)[0] == token.rsplit(".", 1)[0]  # меняется только подпись
         with pytest.raises(jwt.InvalidSignatureError, match="Signature verification failed"):
             decode_access_token(bad, secret)
+
+
+@pytest.mark.parametrize(
+    ("username", "password"),
+    [("erin", "wrong-password-1"), ("nobody", "password-123")],
+    ids=["wrong-password", "unknown-user"],
+)
+def test_login_failure_is_401_and_indistinguishable(
+    client: TestClient, username: str, password: str
+) -> None:
+    client.post("/auth/register", json={"username": "erin", "password": "password-123"})
+    r = client.post("/auth/login", json={"username": username, "password": password})
+    assert r.status_code == 401
+    assert r.json() == {"detail": "неверный логин или пароль"}  # один ответ на оба случая
+    assert r.headers["WWW-Authenticate"] == "Bearer"

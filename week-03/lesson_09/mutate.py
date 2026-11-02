@@ -70,6 +70,13 @@ MUTATIONS = [
         "embedder: Embedder = load_embedder()",
         "эмбеддер грузится на каждый запрос",
     ),
+    Mutation(  # задание 11: ветка, найденная покрытием
+        "test_login_failure_is_401_and_indistinguishable",
+        "services/users.py",
+        "return record.user if check_password(password, record.password_hash) else None",
+        "return record.user",
+        "authenticate не проверяет пароль",
+    ),
 ]
 
 
