@@ -1,3 +1,4 @@
+import os
 from collections.abc import AsyncIterator, Callable, Iterator
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, distribution
@@ -44,8 +45,15 @@ def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter) -> None:
 
 # --- фикстуры ------------------------------------------------------------------------
 @pytest.fixture
-def settings_factory() -> Callable[..., Settings]:
-    """Тестовые Settings; любое поле меняется аргументом: settings_factory(debug=False)."""
+def settings_factory(monkeypatch: pytest.MonkeyPatch) -> Callable[..., Settings]:
+    """Тестовые Settings; любое поле меняется аргументом: settings_factory(debug=False).
+
+    _env_file=None отключает только файл .env; переменные APP_* из окружения процесса
+    Settings читает всё равно (замерено в Ф3-10: APP_JWT_TTL_MINUTES=60 ронял тест срока).
+    Поэтому на время теста они убираются; monkeypatch вернёт их после.
+    """
+    for name in [n for n in os.environ if n.upper().startswith("APP_")]:
+        monkeypatch.delenv(name)
 
     def make(**overrides: object) -> Settings:
         base: dict[str, object] = {
