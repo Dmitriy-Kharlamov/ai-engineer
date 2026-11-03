@@ -1,0 +1,12 @@
+{
+  "_note": "Записано с живого PyPI 2026-11-03 (curl), тело целиком.",
+  "url": "https://pypi.org/pypi/no-such-package-xyz-123/json",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json",
+    "date": "Tue, 03 Nov 2026 16:00:53 GMT"
+  },
+  "json": {
+    "message": "Not Found"
+  }
+}

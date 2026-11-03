@@ -1,0 +1,26 @@
+{
+  "_note": "Записано с живого PyPI 2026-11-03 (curl). Тело урезано до полей, которые читает services/pypi.py; ключи верхнего уровня перечислены в top_level_keys.",
+  "url": "https://pypi.org/pypi/respx/json",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "cache-control": "max-age=900, public",
+    "etag": "\"gOH2UgQ2kFOPo3ZtUlC8Eg\"",
+    "date": "Tue, 03 Nov 2026 16:00:52 GMT"
+  },
+  "top_level_keys": [
+    "info",
+    "last_serial",
+    "ownership",
+    "releases",
+    "urls",
+    "vulnerabilities"
+  ],
+  "json": {
+    "info": {
+      "name": "respx",
+      "version": "0.23.1",
+      "summary": "A utility for mocking out the Python HTTPX and HTTP Core libraries."
+    }
+  }
+}
