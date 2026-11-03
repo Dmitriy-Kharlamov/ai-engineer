@@ -2,7 +2,9 @@
 
 Каждая поломка — замена ровно одного фрагмента в одном файле; после прогона файл
 возвращается как был (finally), даже если прогон прервали.
-Запуск из корня репозитория: python week-03/lesson_09/mutate.py
+Запуск из корня репозитория:
+    python week-03/lesson_09/mutate.py       # поломки Ф3-09
+    python week-03/lesson_09/mutate.py 10    # поломки Ф3-10: код, проверенный моком, и часы
 """
 
 import subprocess
@@ -49,11 +51,11 @@ MUTATIONS = [
         "dependencies=[]",
         "у роутера /admin нет защиты",
     ),
-    Mutation(
-        "test_jwt_expired_and_tampered",
+    Mutation(  # Ф3-10: тест разделён на tampered и expires, decode получил options
+        "test_jwt_tampered_is_invalid",
         "api/security.py",
-        "jwt.decode(token, secret, algorithms=[ALGORITHM])",
-        'jwt.decode(token, secret, algorithms=[ALGORITHM], options={"verify_signature": False})',
+        '"verify_exp": False, "verify_iat": False}',
+        '"verify_exp": False, "verify_iat": False, "verify_signature": False}',
         "подпись JWT не проверяется",
     ),
     Mutation(
@@ -80,6 +82,54 @@ MUTATIONS = [
 ]
 
 
+MUTATIONS_10 = [
+    Mutation(  # задание 2: настоящая реализация, которую проверяет только мок
+        "test_embed_route_with_mock",
+        "ragkit/embedding.py",
+        'digest = hashlib.sha256(text.encode("utf-8")).digest()',
+        'digest = hashlib.sha256(b"").digest()',
+        "HashEmbedder игнорирует текст: у всех текстов один вектор",
+    ),
+    Mutation(
+        "test_embed_route_with_mock",
+        "ragkit/embedding.py",
+        "vectors.append([x / norm for x in raw])",
+        "vectors.append(raw)",
+        "HashEmbedder не нормирует векторы",
+    ),
+    Mutation(  # задание 7: граница срока токена по внедрённым часам
+        "test_jwt_expires_exactly_at_ttl",
+        "api/security.py",
+        "if exp <= moment:",
+        "if exp < moment:",
+        "токен живёт на секунду дольше ttl (<= -> <)",
+    ),
+    Mutation(
+        "test_rate_limit_429",
+        "services/ratelimit.py",
+        "while hits and hits[0] <= now - self.window:",
+        "while hits and hits[0] < now - self.window:",
+        "запрос не выходит из окна ровно через 60 с (<= -> <)",
+    ),
+    Mutation(  # задание 6: retry
+        "test_retry_after_seconds_is_respected",
+        "services/http_retry.py",
+        "if p.respect_retry_after and response is not None:",
+        "if False:",
+        "Retry-After игнорируется",
+    ),
+    Mutation(
+        "test_404_is_final_not_retried",
+        "services/http_retry.py",
+        "RETRY_STATUSES = frozenset({408, 425, 429, 500, 502, 503, 504})",
+        "RETRY_STATUSES = frozenset({404, 408, 425, 429, 500, 502, 503, 504})",
+        "404 повторяется",
+    ),
+]
+
+SETS = {"9": MUTATIONS, "10": MUTATIONS_10}
+
+
 def failed_tests() -> list[str]:
     run = subprocess.run(
         [
@@ -103,10 +153,11 @@ def failed_tests() -> list[str]:
 
 
 def main() -> None:
+    mutations = SETS[sys.argv[1] if len(sys.argv) > 1 else "9"]
     assert failed_tests() == [], "до поломок набор должен быть зелёным"
     print("| тест | поломка | результат | покраснели |")
     print("|---|---|---|---|")
-    for m in MUTATIONS:
+    for m in mutations:
         path = Path(m.path)
         original = path.read_text()
         assert original.count(m.old) == 1, f"{m.path}: фрагмент не найден или не уникален"
