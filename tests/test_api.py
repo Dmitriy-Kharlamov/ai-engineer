@@ -1,10 +1,10 @@
 """Тесты API: pytest"""
 
+import math
 from collections.abc import Callable
 from datetime import datetime
 from importlib.metadata import PackageNotFoundError
 from typing import Any
-from unittest.mock import create_autospec
 
 import pytest
 from fastapi import FastAPI
@@ -130,13 +130,16 @@ def test_error_body_is_whitelisted(client: TestClient) -> None:
     assert err["type"] == "source_path" and "../secret-path" not in r.text
 
 
-def test_embed_route_with_mock(app: FastAPI) -> None:
-    # Мок своего же кода: проверяет, что маршрут позвал embed и вернул его ответ как есть.
-    embedder = create_autospec(HashEmbedder, instance=True)
-    embedder.dim = 3
-    embedder.embed.return_value = [[0.6, 0.8, 0.0]]
-    app.dependency_overrides[deps.get_embedder] = lambda: embedder
-    with TestClient(app) as c:
-        r = c.post("/chunks/embed", json={"texts": ["привет"]})
-    assert r.json() == {"dim": 3, "vectors": [[0.6, 0.8, 0.0]]}
-    embedder.embed.assert_called_once_with(["привет"])
+def test_embed_route_with_fake(client: TestClient) -> None:
+    # Ф3-10, задание 10: вместо create_autospec — настоящий HashEmbedder из lifespan (фейк
+    # модели). Проверяем не вызов, а результат: свойства, которые нужны поиску по векторам.
+    r = client.post("/chunks/embed", json={"texts": ["привет", "мир", "привет"]})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["dim"] == 128
+    hello, world, hello_again = body["vectors"]  # по вектору на текст, в том же порядке
+    assert hello == hello_again  # детерминированность: тот же текст — тот же вектор
+    assert hello != world  # разные тексты — разные векторы
+    for vector in body["vectors"]:
+        assert len(vector) == 128
+        assert math.isclose(math.fsum(x * x for x in vector), 1.0)  # единичная длина

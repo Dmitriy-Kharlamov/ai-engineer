@@ -83,19 +83,26 @@ MUTATIONS = [
 
 
 MUTATIONS_10 = [
-    Mutation(  # задание 2: настоящая реализация, которую проверяет только мок
-        "test_embed_route_with_mock",
+    Mutation(  # задания 2 и 10: до Ф3-10/10 цель была test_embed_route_with_mock
+        "test_embed_route_with_fake",
         "ragkit/embedding.py",
         'digest = hashlib.sha256(text.encode("utf-8")).digest()',
         'digest = hashlib.sha256(b"").digest()',
         "HashEmbedder игнорирует текст: у всех текстов один вектор",
     ),
     Mutation(
-        "test_embed_route_with_mock",
+        "test_embed_route_with_fake",
         "ragkit/embedding.py",
         "vectors.append([x / norm for x in raw])",
         "vectors.append(raw)",
         "HashEmbedder не нормирует векторы",
+    ),
+    Mutation(
+        "test_embed_route_with_fake",
+        "api/routers/chunks.py",
+        "vectors=embedder.embed(body.texts)",
+        "vectors=embedder.embed(body.texts[:1])",
+        "маршрут эмбеддит только первый текст",
     ),
     Mutation(  # задание 7: граница срока токена по внедрённым часам
         "test_jwt_expires_exactly_at_ttl",
