@@ -1,0 +1,34 @@
+# Задание 8: ловушка depends_on. Два зависимых сервиса, различие — только условие.
+#   docker compose -f docker/compose-trap.yaml --profile plain   up --build --abort-on-container-exit
+#   docker compose -f docker/compose-trap.yaml --profile healthy up --build --abort-on-container-exit
+# Секреты — учебные, только для этого прогона; настоящие сюда не пишутся.
+
+name: ragkit-trap
+
+x-api-env: &api-env
+  APP_API_KEY: trap-demo-api-key
+  APP_JWT_SECRET: trap-demo-jwt-secret-not-for-production-use
+
+services:
+  api:
+    build:
+      context: ..
+      target: runtime
+    image: ragkit:latest
+    environment: *api-env
+
+  worker-plain:
+    profiles: [plain]
+    image: ragkit:latest
+    entrypoint: ["python", "/worker.py"]
+    volumes: ["./worker.py:/worker.py:ro"]
+    depends_on: [api] # ждёт только запуска контейнера
+
+  worker-healthy:
+    profiles: [healthy]
+    image: ragkit:latest
+    entrypoint: ["python", "/worker.py"]
+    volumes: ["./worker.py:/worker.py:ro"]
+    depends_on:
+      api:
+        condition: service_healthy # ждёт, пока healthcheck api скажет healthy

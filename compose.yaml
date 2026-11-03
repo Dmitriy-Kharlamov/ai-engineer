@@ -1,0 +1,25 @@
+# docker compose up --build        — api и разовая проверка smoke после готовности api
+# Перед первым запуском: cp .env.example .env и заполни APP_API_KEY и APP_JWT_SECRET.
+# .env в образ не попадает (.dockerignore): compose читает его при запуске.
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    image: ragkit:latest
+    env_file: [.env]
+    ports: ["8000:8000"]
+    # healthcheck из Dockerfile: GET /health/ready каждые 5 с
+    stop_grace_period: 30s # сколько docker ждёт после SIGTERM до SIGKILL (по умолчанию 10 с)
+
+  smoke:
+    image: ragkit:latest
+    entrypoint: ["python", "/worker.py"]
+    volumes: ["./docker/worker.py:/worker.py:ro"]
+    environment:
+      API_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy # не просто «контейнер запущен», а «/health/ready ответил»
+    restart: "no"

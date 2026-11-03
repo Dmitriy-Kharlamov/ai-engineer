@@ -1,0 +1,40 @@
+# Что не уходит в контекст сборки (Ф3-11, задание 4).
+# Меньше контекст — быстрее сборка; и правка этих файлов не сбрасывает кеш COPY.
+
+# секреты: .env читается при запуске (env_file в compose.yaml), в образ — никогда
+.env
+.env.*
+!.env.example
+
+# git и окружения
+.git
+.gitignore
+.venv
+venv
+
+# кеши и артефакты
+**/__pycache__
+**/*.pyc
+.mypy_cache
+.pytest_cache
+.ruff_cache
+htmlcov
+.coverage
+.coverage.*
+*.egg-info
+build
+dist
+
+# уроки, черновики, патчи — сервису не нужны
+week-*
+todo
+python_course
+demo.py
+lesson*-patches
+*.zip
+docker/results*.txt
+
+# macOS и редакторы
+.DS_Store
+.idea
+.vscode
