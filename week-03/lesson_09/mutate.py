@@ -111,6 +111,13 @@ MUTATIONS_10 = [
         "while hits and hits[0] < now - self.window:",
         "запрос не выходит из окна ровно через 60 с (<= -> <)",
     ),
+    Mutation(  # задание 8: гонка, которую видит только одновременный async-тест
+        "test_concurrent_registration_creates_one_user",
+        "services/users.py",
+        "            if username in self._users:\n                raise UserExistsError(username)\n            self._users[username] = record",
+        "            self._users[username] = record",
+        "под блокировкой нет повторной проверки имени",
+    ),
     Mutation(  # задание 6: retry
         "test_retry_after_seconds_is_respected",
         "services/http_retry.py",

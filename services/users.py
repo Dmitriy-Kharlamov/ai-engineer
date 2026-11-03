@@ -1,5 +1,6 @@
 """Пользователи в памяти: регистрация и вход с bcrypt."""
 
+import threading
 from dataclasses import dataclass
 
 from services.passwords import check_password, dummy_hash, hash_password
@@ -25,12 +26,17 @@ class UserStore:
     def __init__(self, rounds: int = 12) -> None:
         self.rounds = rounds
         self._users: dict[str, _Record] = {}
+        self._lock = threading.Lock()  # register — обычный def, FastAPI зовёт его из пула потоков
 
     def register(self, username: str, password: str, roles: frozenset[str] = frozenset()) -> User:
-        if username in self._users:
+        if username in self._users:  # быстрый отказ без bcrypt; окончательно решает блокировка
             raise UserExistsError(username)
         user = User(username, frozenset({"user"}) | roles)
-        self._users[username] = _Record(user, hash_password(password, self.rounds))
+        record = _Record(user, hash_password(password, self.rounds))  # дорогое — вне блокировки
+        with self._lock:  # проверка и запись — одно действие (Ф3-10: найдено гонкой в async-тесте)
+            if username in self._users:
+                raise UserExistsError(username)
+            self._users[username] = record
         return user
 
     def authenticate(

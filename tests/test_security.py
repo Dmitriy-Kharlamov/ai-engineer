@@ -1,8 +1,11 @@
 """401 / 403 / 404, защита роутера, JWT, ограничение частоты."""
 
+import asyncio
 import secrets
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import jwt
 import pytest
 from fastapi import FastAPI
@@ -32,8 +35,14 @@ def login(client: TestClient, user: str, password: str = "password-123") -> dict
     return {"Authorization": f"Bearer {token.json()['access_token']}"}
 
 
-def test_health_is_open(client: TestClient) -> None:
-    assert client.get("/health").status_code == 200
+async def alogin(c: httpx.AsyncClient, user: str, password: str = "password-123") -> dict[str, str]:
+    await c.post("/auth/register", json={"username": user, "password": password})
+    token = await c.post("/auth/login", json={"username": user, "password": password})
+    return {"Authorization": f"Bearer {token.json()['access_token']}"}
+
+
+async def test_health_is_open(aclient: httpx.AsyncClient) -> None:
+    assert (await aclient.get("/health")).status_code == 200
 
 
 def test_admin_router_protects_new_endpoint(client: TestClient, app: FastAPI) -> None:
@@ -46,15 +55,28 @@ def test_admin_router_protects_new_endpoint(client: TestClient, app: FastAPI) ->
     assert client.get("/admin/new-report", headers={"X-API-Key": admin_key}).status_code == 200
 
 
-def test_foreign_document_is_404(client: TestClient) -> None:
-    alice, bob = login(client, "alice"), login(client, "bob")
-    doc = client.post("/documents", json={"name": "a.md", "text": "секрет"}, headers=alice)
+async def test_foreign_document_is_404(aclient: httpx.AsyncClient) -> None:
+    alice, bob = await asyncio.gather(alogin(aclient, "alice"), alogin(aclient, "bob"))
+    doc = await aclient.post("/documents", json={"name": "a.md", "text": "секрет"}, headers=alice)
     doc_id = doc.json()["id"]
-    assert client.get(f"/documents/{doc_id}", headers=alice).status_code == 200
-    foreign = client.get(f"/documents/{doc_id}", headers=bob)
-    missing = client.get("/documents/999999", headers=bob)
+    own, foreign, missing = await asyncio.gather(
+        aclient.get(f"/documents/{doc_id}", headers=alice),
+        aclient.get(f"/documents/{doc_id}", headers=bob),
+        aclient.get("/documents/999999", headers=bob),
+    )
+    assert own.status_code == 200
     assert foreign.status_code == missing.status_code == 404
     assert foreign.json() == missing.json()  # ответы неотличимы
+
+
+async def test_concurrent_registration_creates_one_user(aclient: httpx.AsyncClient) -> None:
+    # register — обычный def: FastAPI выполняет его в пуле потоков, запросы идут одновременно
+    for round_ in range(5):
+        body = {"username": f"race{round_}", "password": "password-123"}
+        replies = await asyncio.gather(
+            *[aclient.post("/auth/register", json=body) for _ in range(10)]
+        )
+        assert Counter(r.status_code for r in replies) == {201: 1, 409: 9}
 
 
 def test_jwt_tampered_is_invalid(client: TestClient) -> None:
