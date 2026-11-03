@@ -5,6 +5,7 @@
 тесты и скрипты передают свои Settings, а учебный /lab включается только при debug=True.
 """
 
+import logging
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
@@ -22,6 +23,9 @@ from services.db import Database
 from services.ratelimit import RateLimiter
 from services.users import UserStore
 
+# Логгер uvicorn уже настроен на INFO: строки идут в docker logs рядом с его собственными.
+log = logging.getLogger("uvicorn.error")
+
 
 def create_app(settings: Settings | None = None, *, clock: Clock | None = None) -> FastAPI:
     cfg = settings if settings is not None else get_settings()
@@ -36,16 +40,22 @@ def create_app(settings: Settings | None = None, *, clock: Clock | None = None) 
         load: Callable[..., Embedder] = app.dependency_overrides.get(
             deps.load_embedder, deps.load_embedder
         )
-        app.state.embedder = load(dim=128)  # один раз за запуск
+        app.state.embedder = load(dim=cfg.embedder_dim)  # один раз за запуск
         app.state.db = Database()
         app.state.users = UserStore(rounds=cfg.bcrypt_rounds)
         app.state.api_keys = ApiKeyStore()
         app.state.rate_limiter = RateLimiter(
             limit=cfg.rate_limit_per_minute, window=60.0, clock=time_source.monotonic
         )
-        secret = cfg.jwt_secret.get_secret_value() if cfg.jwt_secret else None
-        app.state.jwt_secret = secret or secrets.token_urlsafe(32)  # dev: новый на запуск
+        if cfg.jwt_secret is not None:
+            app.state.jwt_secret = cfg.jwt_secret.get_secret_value()
+        else:  # Settings пропускает это только при debug=True
+            log.warning("APP_JWT_SECRET не задан: debug=True, случайный секрет на этот запуск")
+            app.state.jwt_secret = secrets.token_urlsafe(32)
+        log.info("lifespan startup: эмбеддер dim=%d загружен", cfg.embedder_dim)
         yield
+        # После yield — только при аккуратной остановке: SIGKILL сюда не доходит (Ф3-11).
+        log.info("lifespan shutdown: ресурсы освобождены, выхожу")
 
     app = FastAPI(title="ragkit API", version="0.1.0", lifespan=lifespan)
     app.dependency_overrides[get_settings] = lambda: cfg  # приложение видит ровно эти настройки

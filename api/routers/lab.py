@@ -77,6 +77,14 @@ def sleep_fixed_def() -> dict[str, int]:
     return _thread()
 
 
+# --- Ф3-11, задание 10: запрос в полёте во время docker stop ---------------------------
+@router.get("/slow")
+async def slow(seconds: Annotated[float, Query(ge=0, le=60)] = 5.0) -> dict[str, float]:
+    started = time.monotonic()
+    await asyncio.sleep(seconds)
+    return {"slept": round(time.monotonic() - started, 2)}
+
+
 # --- задание 4: утечка в 422 ---------------------------------------------------------
 @router.post("/login")
 async def login(body: Login) -> dict[str, bool]:

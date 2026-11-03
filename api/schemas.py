@@ -37,6 +37,13 @@ class HealthOut(BaseModel):
     started_at: datetime = Field(description="Когда сервис стартовал (UTC)")
 
 
+class ReadyOut(BaseModel):
+    """Готовность (readiness): может ли сервис выполнять работу, а не только отвечать."""
+
+    ready: bool
+    problems: list[str] = Field(default_factory=list)
+
+
 class ConfigOut(BaseModel):
     """Несекретная часть настроек. api_key сюда не входит — и не может попасть."""
 

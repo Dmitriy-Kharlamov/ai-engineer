@@ -15,7 +15,12 @@ from services.apikeys import ApiKeyStore
 
 
 def test_window_slides_on_real_clock() -> None:
-    settings = Settings(api_key=SecretStr("k"), rate_limit_per_minute=3, _env_file=None)
+    settings = Settings(
+        api_key=SecretStr("k"),
+        rate_limit_per_minute=3,
+        jwt_secret=SecretStr("lesson-jwt-secret-at-least-32-bytes!!"),
+        _env_file=None,
+    )
     app = create_app(settings)  # clock не передан — SystemClock, настоящее время
     with TestClient(app) as c:
         keys: ApiKeyStore = app.state.api_keys

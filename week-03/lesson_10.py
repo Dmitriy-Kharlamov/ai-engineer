@@ -313,7 +313,13 @@ def task8() -> None:
         from api.main import create_app
         from ragkit.config import Settings
 
-        app = create_app(Settings(api_key=SecretStr("k"), _env_file=None))
+        app = create_app(
+            Settings(
+                api_key=SecretStr("k"),
+                jwt_secret=SecretStr("lesson-jwt-secret-at-least-32-bytes!!"),
+                _env_file=None,
+            )
+        )
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
             return (await c.get("/health")).status_code

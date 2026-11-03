@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import SecretStr, ValidationError
 
 from api import deps
 from api.main import create_app
@@ -45,6 +46,44 @@ def test_health_survives_missing_metadata(
 def test_settings_override(client: TestClient) -> None:
     r = client.get("/health/config")
     assert r.json() == {"llm_model": "test-model", "debug": True, "max_retries": 7}
+
+
+def test_ready_when_embedder_works(client: TestClient) -> None:
+    r = client.get("/health/ready")
+    assert r.status_code == 200
+    assert r.json() == {"ready": True, "problems": []}
+
+
+def test_not_ready_but_alive_when_embedder_broken(
+    settings_factory: Callable[..., Settings],
+) -> None:
+    with TestClient(create_app(settings_factory(embedder_dim=0))) as c:
+        assert c.get("/health").status_code == 200  # живой
+        r = c.get("/health/ready")
+    assert r.status_code == 503  # но не готов
+    assert r.json() == {"ready": False, "problems": ["эмбеддер не выдаёт векторы: dim=0"]}
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"jwt_secret": None, "debug": False}, "APP_JWT_SECRET обязателен при debug=False"),
+        ({"jwt_secret": SecretStr("короткий")}, "APP_JWT_SECRET короче 32 байт"),
+    ],
+    ids=["no-secret-in-prod", "short-secret"],
+)
+def test_unsafe_jwt_secret_refuses_to_start(
+    settings_factory: Callable[..., Settings], overrides: dict[str, Any], message: str
+) -> None:
+    with pytest.raises(ValidationError, match=message) as info:
+        settings_factory(**overrides)
+    assert "короткий" not in str(info.value)  # hide_input_in_errors: значение не в тексте
+
+
+def test_no_secret_allowed_in_debug(settings_factory: Callable[..., Settings]) -> None:
+    with TestClient(create_app(settings_factory(jwt_secret=None, debug=True))) as c:
+        assert c.get("/health").status_code == 200
+        assert len(c.app.state.jwt_secret) >= 32  # type: ignore[attr-defined]
 
 
 def test_lab_exists_only_in_debug(settings_factory: Callable[..., Settings]) -> None:

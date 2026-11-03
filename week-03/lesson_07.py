@@ -32,7 +32,14 @@ from api.schemas import DocumentIn, SourceName, SplitIn
 from ragkit import Chunk, ChunkDict
 from ragkit.config import Settings
 
-app = create_app(Settings(api_key=SecretStr("lesson-key"), _env_file=None))
+# Ф3-11: при debug=False без jwt_secret Settings отказывается стартовать
+app = create_app(
+    Settings(
+        api_key=SecretStr("lesson-key"),
+        jwt_secret=SecretStr("lesson-jwt-secret-at-least-32-bytes!!"),
+        _env_file=None,
+    )
+)
 
 
 def first_error(exc: ValidationError) -> str:
