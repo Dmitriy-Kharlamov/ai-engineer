@@ -13,6 +13,7 @@ from fastapi import Depends, Request
 from ragkit import Embedder, HashEmbedder
 from ragkit.config import Settings, get_settings
 from services.apikeys import ApiKeyStore
+from services.clock import Clock
 from services.db import Database, Session
 from services.documents import DocumentRepo
 from services.ratelimit import RateLimiter
@@ -46,6 +47,11 @@ def get_api_keys(request: Request) -> ApiKeyStore:
 def get_users(request: Request) -> UserStore:
     users: UserStore = request.app.state.users
     return users
+
+
+def get_clock(request: Request) -> Clock:
+    clock: Clock = request.app.state.clock
+    return clock
 
 
 def get_rate_limiter(request: Request) -> RateLimiter:

@@ -1,7 +1,9 @@
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -10,6 +12,9 @@ from pydantic import SecretStr
 import ragkit
 from api.main import create_app
 from ragkit.config import LLMSettings, Settings
+from services.clock import FakeClock
+
+START = datetime(2026, 1, 1, 9, 0, tzinfo=UTC)  # время в тестах стоит, пока его не сдвинут
 
 
 # --- диагностика окружения (Ф3-09, задание 1) ------------------------------------
@@ -66,9 +71,15 @@ def settings(settings_factory: Callable[..., Settings]) -> Settings:
 
 
 @pytest.fixture
-def app(settings: Settings) -> FastAPI:
+def clock() -> FakeClock:
+    """Часы приложения: clock.advance(60) вместо time.sleep(60)."""
+    return FakeClock(START)
+
+
+@pytest.fixture
+def app(settings: Settings, clock: FakeClock) -> FastAPI:
     """Свежее приложение на каждый тест: своё app.state, свой лимитер, свои overrides."""
-    return create_app(settings)
+    return create_app(settings, clock=clock)
 
 
 @pytest.fixture
@@ -76,3 +87,16 @@ def client(app: FastAPI) -> Iterator[TestClient]:
     """TestClient внутри with: lifespan отрабатывает до первого запроса и после последнего."""
     with TestClient(app) as c:  # with — чтобы отработал lifespan
         yield c
+
+
+@pytest.fixture
+async def aclient(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+    """Асинхронный клиент без сети и без сервера: запросы идут прямо в ASGI-приложение.
+
+    ASGITransport lifespan не запускает (замерено: без этого app.state пуст и /health
+    отвечает 500), поэтому входим в него сами.
+    """
+    async with app.router.lifespan_context(app):
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+            yield c

@@ -1,15 +1,16 @@
 """Аутентификация (кто ты → 401) и авторизация (можно ли тебе → 403) для HTTP-слоя."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Annotated, Any
 
 import jwt
 from fastapi import Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 
-from api.deps import get_api_keys, get_rate_limiter
+from api.deps import get_api_keys, get_clock, get_rate_limiter
 from ragkit.config import Settings, get_settings
 from services.apikeys import ApiKeyStore, Principal
+from services.clock import Clock
 from services.ratelimit import RateLimiter
 
 ALGORITHM = "HS256"
@@ -30,8 +31,9 @@ def jwt_secret(request: Request) -> str:
     return secret
 
 
-def create_access_token(subject: str, roles: frozenset[str], secret: str, ttl_minutes: int) -> str:
-    now = datetime.now(UTC)
+def create_access_token(
+    subject: str, roles: frozenset[str], secret: str, ttl_minutes: int, *, now: datetime
+) -> str:
     payload = {
         "sub": subject,
         "roles": sorted(roles),
@@ -41,20 +43,38 @@ def create_access_token(subject: str, roles: frozenset[str], secret: str, ttl_mi
     return jwt.encode(payload, secret, algorithm=ALGORITHM)
 
 
-def decode_access_token(token: str, secret: str) -> dict[str, Any]:
-    # algorithms обязателен: алгоритм выбираем мы, а не заголовок токена
-    data: dict[str, Any] = jwt.decode(token, secret, algorithms=[ALGORITHM])
+def decode_access_token(token: str, secret: str, *, now: datetime) -> dict[str, Any]:
+    """Подпись, алгоритм и обязательные поля проверяет PyJWT, сроки — мы, по своим часам.
+
+    PyJWT сверяет exp и iat с datetime.now() внутри себя, и внедрённые часы до него не
+    достают; поэтому эти две проверки выключены в PyJWT и сделаны здесь с тем же смыслом.
+    """
+    data: dict[str, Any] = jwt.decode(
+        token,
+        secret,
+        algorithms=[ALGORITHM],  # обязателен: алгоритм выбираем мы, а не заголовок токена
+        options={"require": ["exp", "iat", "sub"], "verify_exp": False, "verify_iat": False},
+    )
+    exp, iat = data["exp"], data["iat"]
+    if not all(isinstance(v, int | float) and not isinstance(v, bool) for v in (exp, iat)):
+        raise jwt.DecodeError("exp и iat должны быть числами")
+    moment = now.timestamp()
+    if exp <= moment:  # как в PyJWT: в секунду exp токен уже недействителен
+        raise jwt.ExpiredSignatureError("Signature has expired")
+    if iat > moment:
+        raise jwt.ImmatureSignatureError("The token is not yet valid (iat)")
     return data
 
 
 def current_user(
     creds: Annotated[HTTPAuthorizationCredentials | None, Security(bearer)],
     secret: Annotated[str, Depends(jwt_secret)],
+    clock: Annotated[Clock, Depends(get_clock)],
 ) -> Principal:
     if creds is None:
         raise unauthorized("Bearer")
     try:
-        data = decode_access_token(creds.credentials, secret)
+        data = decode_access_token(creds.credentials, secret, now=clock.now())
     except jwt.ExpiredSignatureError:
         raise unauthorized("Bearer", "токен просрочен") from None
     except jwt.InvalidTokenError:

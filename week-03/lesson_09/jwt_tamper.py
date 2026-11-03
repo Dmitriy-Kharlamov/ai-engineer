@@ -7,6 +7,7 @@ import base64
 import secrets
 import string
 import warnings
+from datetime import UTC, datetime
 
 import jwt
 
@@ -23,7 +24,7 @@ def sig_bytes(token: str) -> bytes:
 
 def valid(token: str, secret: str) -> bool:
     try:
-        decode_access_token(token, secret)
+        decode_access_token(token, secret, now=datetime.now(UTC))
     except jwt.InvalidTokenError:
         return False
     return True
@@ -40,7 +41,9 @@ def new_tamper(token: str) -> str:
 
 def main() -> None:
     secret = secrets.token_urlsafe(32)
-    token = create_access_token("carol", frozenset({"user"}), secret, ttl_minutes=15)
+    token = create_access_token(
+        "carol", frozenset({"user"}), secret, ttl_minutes=15, now=datetime.now(UTC)
+    )
     sig = token.rsplit(".", 1)[1]
     raw = base64.urlsafe_b64decode(sig + "=" * (-len(sig) % 4))
 
@@ -69,7 +72,9 @@ def main() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")  # как в pytest: любое предупреждение — ошибка
         for i in range(n):
-            t = create_access_token(f"user{i}", frozenset(), secret, ttl_minutes=15)
+            t = create_access_token(
+                f"user{i}", frozenset(), secret, ttl_minutes=15, now=datetime.now(UTC)
+            )
             bad = old_tamper(t)
             last_chars.add(t[-1])
             same += sig_bytes(bad) == sig_bytes(t)
@@ -90,7 +95,9 @@ def main() -> None:
     broken = 0
     for i in range(1000):
         s = secrets.token_urlsafe(32)  # каждый раз новый секрет, как на новом процессе
-        t = create_access_token(f"user{i}", frozenset({"user"}), s, ttl_minutes=15)
+        t = create_access_token(
+            f"user{i}", frozenset({"user"}), s, ttl_minutes=15, now=datetime.now(UTC)
+        )
         bad = new_tamper(t)
         assert bad != t and bad.rsplit(".", 1)[0] == t.rsplit(".", 1)[0]  # меняется только подпись
         broken += not valid(bad, s)

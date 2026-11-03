@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from api.security import create_access_token, decode_access_token
 from services.apikeys import ApiKeyStore
+from services.clock import FakeClock
 
 OTHER_SECRET = "другой-секрет-той-же-длины-32-байта!"  # >= 32 байт: иначе InsecureKeyLengthWarning
 
@@ -56,25 +57,41 @@ def test_foreign_document_is_404(client: TestClient) -> None:
     assert foreign.json() == missing.json()  # ответы неотличимы
 
 
-def test_jwt_expired_and_tampered(client: TestClient) -> None:
+def test_jwt_tampered_is_invalid(client: TestClient) -> None:
     headers = login(client, "carol")
     token = headers["Authorization"].removeprefix("Bearer ")
     r = client.get("/me", headers={"Authorization": f"Bearer {tamper(token)}"})
     assert r.status_code == 401 and r.json()["detail"] == "токен недействителен"
-    secret = client.app.state.jwt_secret  # type: ignore[attr-defined]
-    old = jwt.encode(
-        {"sub": "carol", "exp": datetime.now(UTC) - timedelta(minutes=1)}, secret, algorithm="HS256"
-    )
-    r = client.get("/me", headers={"Authorization": f"Bearer {old}"})
+
+
+def test_jwt_expires_exactly_at_ttl(client: TestClient, clock: FakeClock) -> None:
+    headers = login(client, "carol")  # токен выдан по часам приложения, ttl 15 минут
+    clock.advance(15 * 60 - 1)
+    assert client.get("/me", headers=headers).status_code == 200  # последняя живая секунда
+    clock.advance(1)
+    r = client.get("/me", headers=headers)
     assert r.status_code == 401 and r.json()["detail"] == "токен просрочен"
 
 
-def test_rate_limit_429(client: TestClient, app: FastAPI) -> None:
+def test_jwt_from_the_future_is_invalid(client: TestClient, app: FastAPI, clock: FakeClock) -> None:
+    secret: str = app.state.jwt_secret
+    future = create_access_token(
+        "carol", frozenset(), secret, 15, now=clock.now() + timedelta(hours=1)
+    )
+    r = client.get("/me", headers={"Authorization": f"Bearer {future}"})
+    assert r.status_code == 401 and r.json()["detail"] == "токен недействителен"
+
+
+def test_rate_limit_429(client: TestClient, app: FastAPI, clock: FakeClock) -> None:
     key = keys(app).issue("dave", frozenset())
-    codes = [client.get("/me/key", headers={"X-API-Key": key}).status_code for _ in range(4)]
+    headers = {"X-API-Key": key}
+    codes = [client.get("/me/key", headers=headers).status_code for _ in range(4)]
     assert codes == [200, 200, 200, 429]  # лимит в settings_factory — 3 в минуту
-    r = client.get("/me/key", headers={"X-API-Key": key})
-    assert 1 <= int(r.headers["Retry-After"]) <= 60
+    assert client.get("/me/key", headers=headers).headers["Retry-After"] == "60"  # часы стоят
+    clock.advance(59)
+    assert client.get("/me/key", headers=headers).headers["Retry-After"] == "1"
+    clock.advance(1)  # первый запрос вышел из окна
+    assert client.get("/me/key", headers=headers).status_code == 200
 
 
 def test_unknown_ctx_key_is_dropped() -> None:
@@ -85,13 +102,14 @@ def test_unknown_ctx_key_is_dropped() -> None:
 
 
 def test_tamper_always_breaks_signature() -> None:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
     for i in range(1000):  # каждый раз новый секрет, как новый процесс в разработке
         secret = secrets.token_urlsafe(32)
-        token = create_access_token(f"user{i}", frozenset({"user"}), secret, ttl_minutes=15)
+        token = create_access_token(f"user{i}", frozenset({"user"}), secret, 15, now=now)
         bad = tamper(token)
         assert bad.rsplit(".", 1)[0] == token.rsplit(".", 1)[0]  # меняется только подпись
         with pytest.raises(jwt.InvalidSignatureError, match="Signature verification failed"):
-            decode_access_token(bad, secret)
+            decode_access_token(bad, secret, now=now)
 
 
 @pytest.mark.parametrize(

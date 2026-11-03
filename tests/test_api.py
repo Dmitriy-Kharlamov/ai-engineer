@@ -1,7 +1,7 @@
 """Тесты API: pytest"""
 
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import datetime
 from importlib.metadata import PackageNotFoundError
 from typing import Any
 
@@ -14,19 +14,19 @@ from api.main import create_app
 from api.routers import health
 from ragkit import Embedder, HashEmbedder
 from ragkit.config import Settings
+from services.clock import FakeClock
 
 
-def test_health(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health(client: TestClient, clock: FakeClock, monkeypatch: pytest.MonkeyPatch) -> None:
     # Версию задаём сами: тест не зависит от того, установлен ли пакет в этом окружении,
     # и ловит и "unknown" вместо версии, и опечатку в имени пакета (KeyError -> 500).
     monkeypatch.setattr(health, "version", {"ragkit": "9.9.9"}.__getitem__)
-    before = datetime.now(UTC)
     r = client.get("/health")
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
     assert body["ragkit_version"] == "9.9.9"
-    assert datetime.fromisoformat(body["started_at"]) <= before  # lifespan отработал раньше
+    assert datetime.fromisoformat(body["started_at"]) == clock.now()  # старт по часам app
 
 
 def test_health_survives_missing_metadata(
