@@ -15,6 +15,7 @@ dependencies = [
     "uvicorn[standard]>=0.53",
     "pyjwt>=2.10",
     "bcrypt>=4.2",
+    "httpx>=0.28",  # services/http_retry.py: клиент к чужим API (Ф3-10)
 ]
 
 [tool.setuptools]
@@ -26,11 +27,12 @@ dev = [
     "ruff>=0.17",
     "pre-commit>=4.0",
     "pytest>=9.0",
-    "httpx>=0.28",   # клиент в уроках недели 3
     "httpx2>=2.13",  # starlette 1.x: TestClient работает на httpx2
     "pytest-randomly>=5.0",  # случайный порядок тестов
     "pytest-xdist>=3.8",  # pytest -n 4
     "pytest-cov>=7.0",  # --cov --cov-branch
+    "respx>=0.23",  # стабы HTTP для httpx: маршруты, последовательности ответов
+    "pytest-asyncio>=1.4",  # async def тесты
 ]
 
 # ---------------------------------------------------------------------------
@@ -47,7 +49,11 @@ plugins = ["pydantic.mypy"]      # понимает конструкторы pyd
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers --strict-config"
+# -m "not slow": контрактные тесты против живого API — только явно: pytest -m slow
+addopts = "-q --strict-markers --strict-config -m 'not slow'"
+asyncio_mode = "auto"  # async def тест запускается без @pytest.mark.asyncio
+# без явной настройки pytest-asyncio 1.4 выдаёт PytestDeprecationWarning, а у нас это ошибка
+asyncio_default_fixture_loop_scope = "function"
 # Все предупреждения — ошибки; исключения поштучно, по тексту сообщения.
 filterwarnings = [
     "error",
@@ -55,7 +61,7 @@ filterwarnings = [
     # В starlette 1.10 из requirements.txt предупреждения нет — игнор только для старых окружений.
     "ignore:The anyio.abc.BlockingPortal alias is deprecated:DeprecationWarning",
 ]
-markers = ["slow: тест дольше секунды"]
+markers = ["slow: тест дольше секунды или ходит в живую сеть; в обычный прогон не входит"]
 
 # ---------------------------------------------------------------------------
 # ruff: линтер и форматтер для всего репозитория
