@@ -41,7 +41,7 @@ dev = [
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.14"
-files = ["ragkit", "api", "services", "tools", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py", "week-03/lesson_09", "week-03/lesson_10.py", "week-03/lesson_10", "week-04/lesson_01.py"]   # lesson_05_any.py — намеренные ошибки
+files = ["ragkit", "api", "services", "tools", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py", "week-03/lesson_09", "week-03/lesson_10.py", "week-03/lesson_10", "week-04/lesson_01.py", "week-04/lesson_02.py"]   # lesson_05_any.py — намеренные ошибки
 strict = true
 warn_unreachable = true          # НЕ входит в strict: ловит код после return
 show_error_codes = true

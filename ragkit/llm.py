@@ -47,6 +47,11 @@ def complete_chat(
 
     done_reason == "length": кончился num_predict, текст оборван посреди слова.
     Любое другое значение, кроме "stop", тоже не считается законченным ответом.
+
+    Что даёт сработавшая stop-строка, проверяется замером в week-04/lesson_02.py,
+    задание 11; если тоже "stop" — отличить её от естественного конца по ответу нельзя.
+    Для complete_chat это законченный ответ: обрезку по stop задал сам вызывающий.
+    Кому нужно различать — проверяет текст.
     """
     reply = client.chat(model=model, messages=messages, options=options)
     content = reply.message.content or ""
