@@ -46,12 +46,14 @@ HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 client = ollama.Client(host=HOST)
 SEED = 42
 SAMPLED = {"temperature": 0.7}
-# Окно для диалогов заданий 1–3 — 8192, а не умолчание 4096: в первом запуске история
-# задания 3 дошла до 3984 токенов к 20-му ходу, ещё немного — и сервер молча выбросил бы
-# начало (задание 7). num_predict=1000: при 400 ответ на 13-м ходу оборвался, и
-# Conversation остановил диалог IncompleteResponseError — так и задумано, но мерить надо
-# законченные ответы.
-DIALOG_CTX = 8192
+# Окно для диалогов заданий 1–3 — 16384, а не умолчание 4096. Первый запуск: история
+# задания 3 дошла до 3984 токенов к 20-му ходу — у края окна, за которым сервер молча
+# выбрасывает начало (задание 7). Второй запуск с окном 8192: Conversation отказался
+# отправлять 20-й ход — по оценке 7859 токенов при бюджете 7192 (BudgetExceededError, так и
+# задумано). Ответы длиннее «2–3 предложений» из system, около 380 токенов на ход.
+# num_predict=1000: при 400 ответ на 13-м ходу оборвался, и Conversation остановил диалог
+# IncompleteResponseError — тоже так и задумано, но мерить надо законченные ответы.
+DIALOG_CTX = 16384
 DIALOG_PREDICT = 1000
 DIALOG_OPTS = {"temperature": 0, "seed": SEED, "num_predict": DIALOG_PREDICT, "num_ctx": DIALOG_CTX}
 CHARS_PER_TOKEN = 2.43  # откалибровано в задании 7 на русском тексте с числами
@@ -246,8 +248,15 @@ def run_dialog(policy: LastTurns | None) -> tuple[TurnRecord, ...]:
         count_tokens=CharRatioEstimate(CHARS_PER_TOKEN),
         policy=policy,
     )
+    label = "всё" if policy is None else repr(policy)
     for question in DIALOG:
-        conversation.ask(client, MODEL, DIALOG_OPTS, question=question)
+        r = conversation.ask(client, MODEL, DIALOG_OPTS, question=question)
+        # по ходу: если диалог упадёт, по выводу видно, докуда он дошёл и с какими числами
+        print(
+            f"      [{label}] ход {r.number:>2}: промпт {r.prompt_eval_count} токенов "
+            f"(оценка {r.estimated_tokens}), ответ {r.eval_count} токенов, "
+            f"prefill {r.prompt_eval_ms or 0:.0f} мс"
+        )
     return conversation.records
 
 
