@@ -66,7 +66,14 @@ DOCUMENT_QA = Prompt(
     user_template="Документ:\n<<<\n{document}\n>>>\n\nВопрос: {question}",
 )
 
-PROMPTS: Mapping[str, Prompt] = {p.name: p for p in (SHORT_ANSWER, DOCUMENT_QA)}
+BOOKSHOP_CHAT = Prompt(
+    name="bookshop_chat",
+    version="1",
+    system="Ты консультант книжного магазина «Полка». Отвечай по-русски, 2–3 предложениями.",
+    user_template="{question}",
+)
+
+PROMPTS: Mapping[str, Prompt] = {p.name: p for p in (SHORT_ANSWER, DOCUMENT_QA, BOOKSHOP_CHAT)}
 
 
 def ask_prompt(
