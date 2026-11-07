@@ -1,0 +1,70 @@
+коммит 1359f0a685dd + незакоммиченные правки
+ollama 0.40.14; модель qwen2.5:7b, digest 845dbda0ea48; библиотека ollama 0.6.3
+   qwen2, 7.6B, Q4_K_M, gguf
+
+1. TTFT против общего времени: тот же запрос с stream=False и stream=True
+   прогноз (до запуска): общее время одинаковое в пределах 5 % на всех трёх длинах; TTFT со стримингом — 0,1–0,3 с на всех длинах, без стриминга TTFT = общее время ≈ N × 50 мс (Ф4-01): около 2,5 с, 10 с и 30 с; TTFT падает почти ровно на eval_duration
+   по 3 прогона на режим и длину, режимы чередуются; в таблице медианы
+      N │ без потока: TTFT = всё │ поток: TTFT      всё │ разница всего │ TTFT упал на eval_duration │ текст
+     50 │                 2.34 с │      0.05 с   2.34 с │        -0.1% │       2.29 с        2.28 с │ одинаковый
+    200 │                 9.00 с │      0.05 с   9.01 с │        +0.1% │       8.94 с        8.95 с │ одинаковый
+    600 │                27.48 с │      0.06 с  27.46 с │        -0.1% │      27.43 с       27.41 с │ одинаковый
+   «TTFT упал на» = TTFT без потока − TTFT с потоком; eval_duration — время декода
+   [задание 1: 239.1 с]
+
+2. Анатомия куска
+   прогноз (до запуска): кусков столько же, сколько eval_count, плюс один последний с пустым content; в каждом куске — один токен, 1–4 символа
+   первый (кусок 0):
+      message: {'role': 'assistant', 'content': 'К', 'thinking': None, 'images': None, 'tool_name': None, 'tool_calls': None}
+      остальное: {'model': 'qwen2.5:7b', 'created_at': '2026-11-07T11:53:07.931976Z', 'done': False, 'done_reason': None, 'total_duration': None, 'load_duration': None, 'prompt_eval_count': None, 'prompt_eval_duration': None, 'eval_count': None, 'eval_duration': None, 'logprobs': None}
+   из середины (кусок 30):
+      message: {'role': 'assistant', 'content': '**', 'thinking': None, 'images': None, 'tool_name': None, 'tool_calls': None}
+      остальное: {'model': 'qwen2.5:7b', 'created_at': '2026-11-07T11:53:09.37305Z', 'done': False, 'done_reason': None, 'total_duration': None, 'load_duration': None, 'prompt_eval_count': None, 'prompt_eval_duration': None, 'eval_count': None, 'eval_duration': None, 'logprobs': None}
+   последний (кусок 60):
+      message: {'role': 'assistant', 'content': '', 'thinking': None, 'images': None, 'tool_name': None, 'tool_calls': None}
+      остальное: {'model': 'qwen2.5:7b', 'created_at': '2026-11-07T11:53:10.750811Z', 'done': True, 'done_reason': 'length', 'total_duration': 2872562625, 'load_duration': 1306209, 'prompt_eval_count': 50, 'prompt_eval_duration': 47270000, 'eval_count': 60, 'eval_duration': 2818501000, 'logprobs': None}
+   content — дельта, а не накопленное:
+      склейка всех content == ответ без стриминга (тот же seed, T=0): True (143 и 143 символов)
+      кусков, которые начинаются с предыдущего и длиннее его (так выглядело бы накопленное): 1 из 60
+      самый длинный content — 8 симв. ' интерес'; будь content накопленным, последний непустой был бы всем ответом, 143 симв.
+      первые 12 дельт: ['К', 'он', 'ечно', ',', ' вот', ' три', ' стол', 'ицы', ' Е', 'в', 'р', 'оп']
+   конверт — только в последнем куске (номера кусков, где поле не None):
+      done_reason           [60]
+      total_duration        [60]
+      load_duration         [60]
+      prompt_eval_count     [60]
+      prompt_eval_duration  [60]
+      eval_count            [60]
+      eval_duration         [60]
+      done=True — в кусках [60]; done=False — в остальных 60
+   кусков всего 61, с непустым текстом 60, eval_count 60 (без стриминга 60)
+   [задание 2: 5.9 с]
+
+3. Инверсия проверки
+   complete_chat с потоком:
+      AttributeError: 'generator' object has no attribute 'message' — у потока нет ни message, ни done_reason
+      по первому куску: IncompleteResponseError: ответ неполный: done_reason=None, 1 символов, конец: 'К'
+      — хотя ответ нормальный: done_reason у первого куска всегда None
+   ragkit.streaming.stream_chat, законченный ответ:
+Traceback (most recent call last):
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/ragkit/streaming.py", line 204, in __next__
+    chunk = next(self._chunks)
+StopIteration
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/week-04/lesson_04.py", line 862, in <module>
+    main(sys.argv[1:])
+    ~~~~^^^^^^^^^^^^^^
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/week-04/lesson_04.py", line 857, in main
+    TASKS[n]()
+    ~~~~~~~~^^
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/week-04/lesson_04.py", line 340, in task3
+    deltas = list(stream)
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/ragkit/streaming.py", line 207, in __next__
+    self._asm.finish()
+    ~~~~~~~~~~~~~~~~^^
+  File "/Users/dmitriykharlamov/Desktop/ai-engineer/ragkit/streaming.py", line 182, in finish
+    raise StreamIncomplete(self.envelope, self.text)
+ragkit.streaming.StreamIncomplete: ответ неполный: done_reason='length', уже показано 428 символов, конец: '冷战结束和德国统一的开始。\n\n3. **Рим, Италия** - стол'
