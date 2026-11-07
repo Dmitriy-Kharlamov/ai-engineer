@@ -16,17 +16,22 @@
   сообщения, оставляя system, и счётчик показывает «почти полное окно» (замер, задание 7:
   4083 из 4096, а первый ход потерян). Выход за бюджет — исключение, а не тихая отправка.
 - Каждый ход записывает имя и версию промпта (ragkit.prompts, Ф4-02).
+- Потоковый ход (ask_stream, Ф4-04): пользователь видит ответ раньше, чем известно,
+  законченный ли он. Что записать в историю, если поток оборвался, решает PartialPolicy —
+  параметром, а не по умолчанию «как получится».
 """
 
 import math
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from dataclasses import dataclass
+from enum import Enum
 from types import MappingProxyType
 from typing import Any, Protocol
 
 from .exceptions import RAGError
 from .llm import ChatClient, IncompleteResponseError
 from .prompts import Prompt
+from .streaming import Envelope, StreamingChatClient, stream_chat
 
 Message = Mapping[str, Any]
 Turn = tuple[Message, ...]
@@ -178,6 +183,33 @@ class TurnRecord:
     prompt_eval_ms: float | None
     eval_count: int | None
     answer: str
+    outcome: str = "stop"  # "stop" — законченный ответ; "partial:mark" и т. п. — обрывок
+
+
+class PartialPolicy(Enum):
+    """Что записать в историю, если поток оборвался после того, как его начали показывать.
+
+    DISCARD — ничего: пара «вопрос + обрывок» пропадает целиком, история как будто хода не
+      было. Пользователь видел текст, которого модель на следующем ходу «не помнит».
+    MARK — обрывок с пометкой PARTIAL_MARK в конце: модель видит, что ответ не закончен.
+    AS_COMPLETE — обрывок как полный ответ. Самый естественный вариант, если не думать, и
+      самый опасный: обрывок становится «фактом» в истории, а свою историю модель защищает
+      (Ф4-03, задание 5: ложь в собственном прошлом ответе — 20 повторов из 20, и инструкция
+      «исправь ошибку» не изменила ни одного). Обрывок «не рекомендуется при…» на месте
+      «не рекомендуется при беременности» — уже другой факт.
+
+    По умолчанию в ask_stream — DISCARD: тот же контракт, что у ask (ход записан целиком или
+    не записан вовсе), и в историю не попадает ничего непроверенного. Цена — модель не знает,
+    что пользователь видел; это лечится интерфейсом («ответ оборван, повторите»), а ложь в
+    истории — ничем.
+    """
+
+    DISCARD = "discard"
+    MARK = "mark"
+    AS_COMPLETE = "as_complete"
+
+
+PARTIAL_MARK = "\n\n[ответ оборван: {reason}]"
 
 
 def _frozen(message: Message) -> Message:
@@ -240,6 +272,38 @@ class Conversation:
             )
         return messages
 
+    def _commit(
+        self,
+        messages: Sequence[Message],
+        content: str,
+        *,
+        outcome: str,
+        prompt_eval_count: int | None,
+        prompt_eval_ms: float | None,
+        eval_count: int | None,
+    ) -> TurnRecord:
+        """Записать ход целиком: вопрос и ответ одной парой, и строку в журнал."""
+        self._history = (
+            *self._history,
+            _frozen(messages[-1]),
+            _frozen({"role": "assistant", "content": content}),
+        )
+        record = TurnRecord(
+            number=len(self._records) + 1,
+            prompt=self.prompt.name,
+            prompt_version=self.prompt.version,
+            policy=repr(self.policy),
+            sent_messages=len(messages),
+            estimated_tokens=self.count_tokens(messages),
+            prompt_eval_count=prompt_eval_count,
+            prompt_eval_ms=prompt_eval_ms,
+            eval_count=eval_count,
+            answer=content,
+            outcome=outcome,
+        )
+        self._records = (*self._records, record)
+        return record
+
     def ask(
         self,
         client: ChatClient,
@@ -256,23 +320,67 @@ class Conversation:
                 f"ответ неполный: done_reason={reply.done_reason!r}, "
                 f"промпт {self.prompt.name} v{self.prompt.version}, ход {len(self._records) + 1}"
             )
-        self._history = (
-            *self._history,
-            _frozen(messages[-1]),
-            _frozen({"role": "assistant", "content": content}),
-        )
         duration = getattr(reply, "prompt_eval_duration", None)
-        record = TurnRecord(
-            number=len(self._records) + 1,
-            prompt=self.prompt.name,
-            prompt_version=self.prompt.version,
-            policy=repr(self.policy),
-            sent_messages=len(messages),
-            estimated_tokens=self.count_tokens(messages),
+        return self._commit(
+            messages,
+            content,
+            outcome="stop",
             prompt_eval_count=getattr(reply, "prompt_eval_count", None),
             prompt_eval_ms=duration / 1e6 if duration is not None else None,
             eval_count=getattr(reply, "eval_count", None),
-            answer=content,
         )
-        self._records = (*self._records, record)
-        return record
+
+    def _keep_partial(
+        self, messages: Sequence[Message], text: str, reason: str, partial: PartialPolicy
+    ) -> None:
+        if partial is PartialPolicy.DISCARD:
+            return
+        content = (
+            text + PARTIAL_MARK.format(reason=reason) if partial is PartialPolicy.MARK else text
+        )
+        self._commit(
+            messages,
+            content,
+            outcome=f"partial:{partial.value}",
+            prompt_eval_count=None,
+            prompt_eval_ms=None,
+            eval_count=None,
+        )
+
+    def ask_stream(
+        self,
+        client: StreamingChatClient,
+        model: str,
+        options: Mapping[str, Any] | None = None,
+        *,
+        partial: PartialPolicy = PartialPolicy.DISCARD,
+        **values: str,
+    ) -> Generator[str, None, None]:
+        """Потоковый ход: отдаёт дельты; законченный ответ записывается после последней.
+
+        Поток оборвался (StreamIncomplete, StreamTruncated, ошибка сервера посреди текста)
+        или потребитель бросил чтение — в историю идёт то, что велит partial, а исключение
+        летит дальше. Брошенный генератор закрывай явно (contextlib.closing или .close()):
+        иначе политика применится, когда до него доберётся сборщик мусора.
+        """
+        messages = self.outgoing(**values)
+        stream = stream_chat(client, model, messages, options)
+        try:
+            yield from stream
+        except GeneratorExit:
+            self._keep_partial(messages, stream.text, "чтение прервано", partial)
+            raise
+        except Exception as error:
+            self._keep_partial(messages, stream.text, type(error).__name__, partial)
+            raise
+        finally:
+            stream.close()
+        envelope: Envelope = stream.envelope
+        self._commit(
+            messages,
+            stream.text,
+            outcome="stop",
+            prompt_eval_count=envelope.prompt_eval_count,
+            prompt_eval_ms=envelope.prompt_eval_ns / 1e6,
+            eval_count=envelope.eval_count,
+        )
