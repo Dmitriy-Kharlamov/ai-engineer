@@ -1,0 +1,41 @@
+{
+  "_note": "Замеры токенов на своих текстах: пары (символов, токенов) и целые запросы. Токены — prompt_eval_count qwen2.5:7b, ollama 0.40.14; для текста — разница с пустым сообщением. Источник — строка вывода урока. Дополняется после каждого нового замера: тест направления ошибки оценщика должен проходить на всех.",
+  "text_samples": [
+    {
+      "source": "week-04/lesson_02_part1b.txt:14",
+      "kind": "ru_examples",
+      "chars": 296,
+      "tokens": 179
+    },
+    {
+      "source": "week-04/lesson_03_part4.txt:34",
+      "kind": "ru_notes",
+      "chars": 1271,
+      "tokens": 566
+    },
+    {
+      "source": "week-04/lesson_03_part4.txt:35",
+      "kind": "ru_notes",
+      "chars": 3167,
+      "tokens": 1386
+    },
+    {
+      "source": "week-04/lesson_03_part4.txt:36",
+      "kind": "ru_notes",
+      "chars": 6008,
+      "tokens": 2613
+    }
+  ],
+  "requests": [
+    {
+      "source": "week-04/lesson_03_part4.txt:38",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Привет"
+        }
+      ],
+      "tokens": 32
+    }
+  ]
+}

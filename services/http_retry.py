@@ -3,7 +3,14 @@
 Что изменилось относительно week-03/lesson_03.py:
 - пауза и случайность внедряются (sleep=, rng=, now=) — тест не ждёт и знает каждую паузу;
 - Retry-After понимается в обоих форматах RFC 9110: секунды и HTTP-дата;
-- print заменён на возвращаемый журнал попыток.
+- print заменён на возвращаемый журнал попыток;
+- джиттер — аддитивный (как было) или полный, jitter_mode="full" (Ф4-07, задание 6):
+  аддитивный не даёт паузе быть меньше экспоненты, полный тянет её от нуля до экспоненты.
+  В Ф3-03 оба меряли симуляцией; полный в пакете появился, когда понадобилось мерить живьём.
+
+Retry-After, если он есть и respect_retry_after=True, заменяет формулу целиком: без джиттера
+и без cap. Это два открытых вопроса, не решения: одинаковый Retry-After синхронизирует всех
+клиентов, которых задел один и тот же лимит, а огромный Retry-After клиент честно проспит.
 """
 
 import asyncio
@@ -12,6 +19,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from typing import Literal
 
 import httpx
 
@@ -55,12 +63,21 @@ class RetryPolicy:
     attempts: int = 5
     base: float = 0.5
     cap: float = 8.0
-    jitter: float = 0.5
+    jitter: float = 0.5  # аддитивный: сколько секунд случайности сверх экспоненты
     respect_retry_after: bool = True
+    jitter_mode: Literal["additive", "full"] = "additive"
 
     def __post_init__(self) -> None:
         if self.attempts < 1:
             raise ValueError(f"attempts должно быть ≥ 1, получено {self.attempts}")
+
+
+def backoff(policy: RetryPolicy, number: int, rng: Callable[[], float]) -> float:
+    """Пауза после неудачной попытки number (с 1) по формуле, без Retry-After."""
+    exp = min(policy.cap, policy.base * 2.0 ** (number - 1))
+    if policy.jitter_mode == "full":
+        return rng() * exp
+    return exp + rng() * policy.jitter
 
 
 @dataclass
@@ -112,7 +129,7 @@ async def request_with_retry(
             if number == p.attempts or not should_retry(outcome, method):
                 journal.attempts.append(Attempt(number, str(outcome)))
                 response.raise_for_status()
-        pause = min(p.cap, p.base * 2 ** (number - 1)) + rng() * p.jitter
+        pause = backoff(p, number, rng)
         source = "формула"
         if p.respect_retry_after and response is not None:
             hinted = retry_after_seconds(response.headers.get("Retry-After"), now())

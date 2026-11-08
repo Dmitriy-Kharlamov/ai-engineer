@@ -10,7 +10,7 @@ import httpx
 import pytest
 import respx
 
-from services.http_retry import RetryLog, RetryPolicy, retry_after_seconds
+from services.http_retry import RetryLog, RetryPolicy, backoff, retry_after_seconds
 from services.pypi import PYPI_URL, PackageNotFoundOnPyPIError, fetch_package
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -130,3 +130,16 @@ async def test_connect_error_is_retried(respx_mock: respx.MockRouter, sleep: Sle
 )
 def test_retry_after_parsing(header: str | None, seconds: float | None) -> None:
     assert retry_after_seconds(header, NOW) == seconds
+
+
+def test_backoff_additive_never_below_exponent() -> None:
+    policy = RetryPolicy(base=0.5, cap=8.0, jitter=0.5)
+    assert [backoff(policy, n, lambda: 0.0) for n in (1, 2, 3, 6)] == [0.5, 1.0, 2.0, 8.0]
+    assert backoff(policy, 1, lambda: 1.0) == 1.0
+
+
+def test_backoff_full_jitter_spans_zero_to_exponent() -> None:
+    policy = RetryPolicy(base=0.5, cap=8.0, jitter_mode="full")
+    assert backoff(policy, 3, lambda: 0.0) == 0.0
+    assert backoff(policy, 3, lambda: 0.5) == 1.0  # половина от 2.0
+    assert backoff(policy, 10, lambda: 1.0) == 8.0  # cap

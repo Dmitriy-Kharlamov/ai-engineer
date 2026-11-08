@@ -374,6 +374,8 @@ class Step:
     prompt_eval_count: int | None
     eval_count: int | None
     results: tuple[ToolResult, ...] = ()
+    prompt_eval_ns: int | None = None  # время prefill и decode на сервере, если ответ их несёт
+    eval_ns: int | None = None
 
 
 @dataclass(frozen=True)
@@ -423,8 +425,18 @@ def run_tools(
             )
         calls = list(reply.message.tool_calls or ())
         content = reply.message.content or ""
+        prompt_ns: int | None = getattr(reply, "prompt_eval_duration", None)
+        eval_ns: int | None = getattr(reply, "eval_duration", None)
         if not calls:
-            steps.append(Step(iteration, reply.prompt_eval_count, reply.eval_count))
+            steps.append(
+                Step(
+                    iteration,
+                    reply.prompt_eval_count,
+                    reply.eval_count,
+                    prompt_eval_ns=prompt_ns,
+                    eval_ns=eval_ns,
+                )
+            )
             history.append({"role": "assistant", "content": content})
             return LoopResult(content, tuple(history), tuple(steps))
         history.append(
@@ -455,7 +467,16 @@ def run_tools(
             result = replace(result, requested_arguments=dict(arguments))
             results.append(result)
             history.append(result.message())
-        steps.append(Step(iteration, reply.prompt_eval_count, reply.eval_count, tuple(results)))
+        steps.append(
+            Step(
+                iteration,
+                reply.prompt_eval_count,
+                reply.eval_count,
+                tuple(results),
+                prompt_eval_ns=prompt_ns,
+                eval_ns=eval_ns,
+            )
+        )
     raise IterationLimitError(
         f"модель просит инструменты после {max_iterations} обращений; "
         f"вызовов всего {sum(len(s.results) for s in steps)}",
