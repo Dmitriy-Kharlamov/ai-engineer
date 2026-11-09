@@ -24,6 +24,78 @@
       "kind": "ru_notes",
       "chars": 6008,
       "tokens": 2613
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:69",
+      "kind": "русская проза",
+      "chars": 463,
+      "tokens": 176
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:70",
+      "kind": "русская проза",
+      "chars": 408,
+      "tokens": 150
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:71",
+      "kind": "русская проза",
+      "chars": 405,
+      "tokens": 138
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:72",
+      "kind": "английская проза",
+      "chars": 427,
+      "tokens": 94
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:73",
+      "kind": "английская проза",
+      "chars": 404,
+      "tokens": 92
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:74",
+      "kind": "английская проза",
+      "chars": 396,
+      "tokens": 71
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:75",
+      "kind": "Python",
+      "chars": 527,
+      "tokens": 136
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:76",
+      "kind": "Python",
+      "chars": 1552,
+      "tokens": 364
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:77",
+      "kind": "Python",
+      "chars": 1093,
+      "tokens": 286
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:78",
+      "kind": "JSON (ensure_ascii=False)",
+      "chars": 1342,
+      "tokens": 541
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:79",
+      "kind": "JSON (ensure_ascii=False)",
+      "chars": 777,
+      "tokens": 224
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:80",
+      "kind": "JSON (ensure_ascii=False)",
+      "chars": 487,
+      "tokens": 252
     }
   ],
   "requests": [
@@ -36,6 +108,43 @@
         }
       ],
       "tokens": 32
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:50",
+      "kind": "RAG: русский, английский, JSON",
+      "messages": [
+        {
+          "role": "system",
+          "content": "Отвечай только по найденным фрагментам. Если ответа в них нет — так и скажи."
+        },
+        {
+          "role": "user",
+          "content": "Найденные фрагменты:\nОтчёт о продажах за третий квартал показал рост выручки на двенадцать процентов, но маржа снизилась: подорожала доставка, а скидки для крупных клиентов съели часть прибыли. Отдел закупок предлагает пересмотреть договоры с перевозчиками до конца года, отдел продаж — ограничить скидки суммой заказа. Решение отложили до совещания в понедельник; к нему финансовая служба подготовит расчёт по трём сценариям.\n\nThe third-quarter sales report showed revenue up twelve percent, but margins fell: shipping costs rose and discounts for large customers ate part of the profit. Purchasing proposes renegotiating carrier contracts before the end of the year; sales wants to cap discounts by order size. The decision was postponed to Monday's meeting, for which finance will prepare estimates under three scenarios.\n\n[\n  {\n    \"order_id\": 50300,\n    \"created_at\": \"2026-01-01T09:00:00+03:00\",\n    \"status\": \"доставлен\",\n    \"items\": [\n      {\n        \"sku\": \"KN-118\",\n        \"title\": \"Чайник электрический\",\n        \"qty\": 1,\n        \"price\": 2490\n      },\n      {\n        \"sku\": \"PN-031\",\n        \"title\": \"Сковорода 28 см\",\n        \"qty\": 1,\n        \"price\": 1890\n      }\n    ],\n    \"total\": 4380,\n    \"currency\": \"RUB\",\n    \"payment\": {\n      \"method\": \"карта\",\n      \"card_mask\": \"**** 4000\",\n      \"paid\": true\n    },\n    \"address\": {\n      \"city\": \"Казань\",\n      \"street\": \"ул. Баумана\",\n      \"house\": \"10\",\n      \"flat\": \"20\",\n      \"zip\": \"420111\"\n    },\n    \"comment\": \"\"\n  },\n  {\n    \"order_id\": 50307,\n    \"created_at\": \"2026-01-12T10:13:00+03:00\",\n    \"status\": \"доставлен\",\n    \"items\": [\n      {\n        \"sku\": \"BL-207\",\n        \"title\": \"Блендер погружной\",\n        \"qty\": 2,\n        \"price\": 3990\n      },\n      {\n        \"sku\": \"BL-207\",\n        \"title\": \"Блендер погружной\",\n        \"qty\": 1,\n        \"price\": 3990\n      }\n    ],\n    \"total\": 11970,\n    \"currency\": \"RUB\",\n    \"payment\": {\n      \"method\": \"карта\",\n      \"card_mask\": \"**** 4037\",\n      \"paid\": true\n    },\n    \"address\": {\n      \"city\": \"Казань\",\n      \"street\": \"ул. Баумана\",\n      \"house\": \"11\",\n      \"flat\": \"21\",\n      \"zip\": \"420111\"\n    },\n    \"comment\": \"\"\n  }\n]\n\nВопрос: когда создан последний заказ и как изменилась маржа в третьем квартале?"
+        }
+      ],
+      "tokens": 822
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:105",
+      "kind": "выжимка заказов",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Данные о заказах клиента:\n{\"всего_заказов\": 25, \"показаны_последние\": [{\"order_id\": 50433, \"created_at\": \"2026-07-21\", \"status\": \"доставлен\"}, {\"order_id\": 50461, \"created_at\": \"2026-08-11\", \"status\": \"доставлен\"}, {\"order_id\": 50447, \"created_at\": \"2026-08-16\", \"status\": \"доставлен\"}, {\"order_id\": 50454, \"created_at\": \"2026-08-27\", \"status\": \"доставлен\"}, {\"order_id\": 50468, \"created_at\": \"2026-09-22\", \"status\": \"в пути\"}]}\n\nВопрос: Когда доставят последний заказ клиента Ивана Соколова?"
+        }
+      ],
+      "tokens": 265
+    },
+    {
+      "source": "week-04/lesson_07_part1.txt:103",
+      "kind": "полный список заказов",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Данные о заказах клиента:\n{\"orders\": [{\"order_id\": 50300, \"created_at\": \"2026-01-01T09:00:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}, {\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4000\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"10\", \"flat\": \"20\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50307, \"created_at\": \"2026-01-12T10:13:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 2, \"price\": 3990}, {\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 1, \"price\": 3990}], \"total\": 11970, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4037\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"11\", \"flat\": \"21\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50314, \"created_at\": \"2026-01-23T11:26:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}, {\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4074\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"12\", \"flat\": \"22\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50321, \"created_at\": \"2026-02-07T12:39:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 2, \"price\": 690}, {\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 1, \"price\": 450}], \"total\": 1830, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4111\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"13\", \"flat\": \"23\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50328, \"created_at\": \"2026-02-18T13:52:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}, {\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}], \"total\": 4300, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4148\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"14\", \"flat\": \"24\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50335, \"created_at\": \"2026-02-02T14:05:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 2, \"price\": 450}, {\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 1, \"price\": 690}], \"total\": 1590, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4185\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"10\", \"flat\": \"25\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50342, \"created_at\": \"2026-03-13T15:18:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}, {\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4222\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"11\", \"flat\": \"26\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50349, \"created_at\": \"2026-03-24T16:31:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 2, \"price\": 3990}, {\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 1, \"price\": 3990}], \"total\": 11970, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4259\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"12\", \"flat\": \"27\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50356, \"created_at\": \"2026-03-08T17:44:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}, {\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4296\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"13\", \"flat\": \"28\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50363, \"created_at\": \"2026-04-19T09:57:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 2, \"price\": 690}, {\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 1, \"price\": 450}], \"total\": 1830, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4333\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"14\", \"flat\": \"29\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50370, \"created_at\": \"2026-04-03T10:10:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}, {\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}], \"total\": 4300, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4370\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"10\", \"flat\": \"30\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50377, \"created_at\": \"2026-04-14T11:23:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 2, \"price\": 450}, {\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 1, \"price\": 690}], \"total\": 1590, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4407\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"11\", \"flat\": \"31\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50384, \"created_at\": \"2026-05-25T12:36:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}, {\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4444\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"12\", \"flat\": \"32\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50391, \"created_at\": \"2026-05-09T13:49:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 2, \"price\": 3990}, {\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 1, \"price\": 3990}], \"total\": 11970, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4481\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"13\", \"flat\": \"33\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50398, \"created_at\": \"2026-05-20T14:02:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}, {\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4518\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"14\", \"flat\": \"34\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50405, \"created_at\": \"2026-06-04T15:15:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 2, \"price\": 690}, {\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 1, \"price\": 450}], \"total\": 1830, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4555\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"10\", \"flat\": \"35\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50412, \"created_at\": \"2026-06-15T16:28:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}, {\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}], \"total\": 4300, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4592\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"11\", \"flat\": \"36\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50419, \"created_at\": \"2026-06-26T17:41:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 2, \"price\": 450}, {\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 1, \"price\": 690}], \"total\": 1590, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4629\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"12\", \"flat\": \"37\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50426, \"created_at\": \"2026-07-10T09:54:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}, {\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4666\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"13\", \"flat\": \"38\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50433, \"created_at\": \"2026-07-21T10:07:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 2, \"price\": 3990}, {\"sku\": \"BL-207\", \"title\": \"Блендер погружной\", \"qty\": 1, \"price\": 3990}], \"total\": 11970, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4703\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"14\", \"flat\": \"39\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50440, \"created_at\": \"2026-07-05T11:20:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}, {\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4740\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"10\", \"flat\": \"40\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50447, \"created_at\": \"2026-08-16T12:33:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 2, \"price\": 690}, {\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 1, \"price\": 450}], \"total\": 1830, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4777\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"11\", \"flat\": \"41\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50454, \"created_at\": \"2026-08-27T13:46:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}, {\"sku\": \"LM-904\", \"title\": \"Настольная лампа\", \"qty\": 1, \"price\": 2150}], \"total\": 4300, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4814\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"12\", \"flat\": \"42\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50461, \"created_at\": \"2026-08-11T14:59:00+03:00\", \"status\": \"доставлен\", \"items\": [{\"sku\": \"MG-310\", \"title\": \"Кружка керамическая\", \"qty\": 2, \"price\": 450}, {\"sku\": \"TW-552\", \"title\": \"Полотенце махровое\", \"qty\": 1, \"price\": 690}], \"total\": 1590, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4851\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"13\", \"flat\": \"43\", \"zip\": \"420111\"}, \"comment\": \"\"}, {\"order_id\": 50468, \"created_at\": \"2026-09-22T15:12:00+03:00\", \"status\": \"в пути\", \"items\": [{\"sku\": \"KN-118\", \"title\": \"Чайник электрический\", \"qty\": 1, \"price\": 2490}, {\"sku\": \"PN-031\", \"title\": \"Сковорода 28 см\", \"qty\": 1, \"price\": 1890}], \"total\": 4380, \"currency\": \"RUB\", \"payment\": {\"method\": \"карта\", \"card_mask\": \"**** 4888\", \"paid\": true}, \"address\": {\"city\": \"Казань\", \"street\": \"ул. Баумана\", \"house\": \"14\", \"flat\": \"44\", \"zip\": \"420111\"}, \"comment\": \"\"}]}\n\nВопрос: Когда доставят последний заказ клиента Ивана Соколова?"
+        }
+      ],
+      "tokens": 5658
     }
   ]
 }
