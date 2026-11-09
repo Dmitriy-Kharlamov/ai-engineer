@@ -395,6 +395,50 @@ def call_key(name: str, arguments: Mapping[str, Any]) -> str:
     return json.dumps([name, arguments], ensure_ascii=False, sort_keys=True, default=str)
 
 
+def assistant_message(
+    content: str, calls: Sequence[tuple[str, Mapping[str, Any]]]
+) -> dict[str, Any]:
+    """Сообщение модели с вызовами — в том виде, в каком оно уходит обратно в историю."""
+    return {
+        "role": "assistant",
+        "content": content,
+        "tool_calls": [{"function": {"name": n, "arguments": dict(a)}} for n, a in calls],
+    }
+
+
+class ToolLoop:
+    """Одна итерация цикла без ввода-вывода: запрет повтора, вызов, порядок результатов.
+
+    Её используют run_tools (без потока) и потоковые циклы (Ф4-08): как получить вызовы от
+    модели — дело цикла, а что с ними делать — одно на всех.
+    """
+
+    def __init__(self, registry: ToolRegistry) -> None:
+        self.registry = registry
+        self._seen: dict[str, int] = {}
+
+    def handle(
+        self, iteration: int, calls: Sequence[tuple[str, Mapping[str, Any]]]
+    ) -> tuple[ToolResult, ...]:
+        """Результаты строго в порядке вызовов: другой связи между ними нет (Ф4-06)."""
+        results: list[ToolResult] = []
+        for name, arguments in calls:
+            key = call_key(name, arguments)
+            if key in self._seen:
+                result = ToolResult(
+                    "repeat",
+                    name,
+                    name if name in self.registry.names else UNKNOWN_TOOL,
+                    f"повтор: такой же вызов уже выполнен на итерации {self._seen[key]}; "
+                    "результат выше и не изменится. Не повторяй его — ответь пользователю.",
+                )
+            else:
+                self._seen[key] = iteration
+                result = self.registry.dispatch(name, arguments)
+            results.append(replace(result, requested_arguments=dict(arguments)))
+        return tuple(results)
+
+
 def run_tools(
     client: ToolChatClient,
     model: str,
@@ -415,7 +459,7 @@ def run_tools(
         raise ValueError("max_iterations должен быть не меньше 1")
     history: list[Message] = list(messages)
     steps: list[Step] = []
-    seen: dict[str, int] = {}
+    loop = ToolLoop(registry)
     schemas = registry.schemas()
     for iteration in range(1, max_iterations + 1):
         reply = client.chat(model=model, messages=history, tools=schemas, options=options)
@@ -423,7 +467,7 @@ def run_tools(
             raise IncompleteResponseError(
                 f"ответ неполный: done_reason={reply.done_reason!r}, итерация {iteration}"
             )
-        calls = list(reply.message.tool_calls or ())
+        calls = [(c.function.name, c.function.arguments) for c in reply.message.tool_calls or ()]
         content = reply.message.content or ""
         prompt_ns: int | None = getattr(reply, "prompt_eval_duration", None)
         eval_ns: int | None = getattr(reply, "eval_duration", None)
@@ -439,40 +483,15 @@ def run_tools(
             )
             history.append({"role": "assistant", "content": content})
             return LoopResult(content, tuple(history), tuple(steps))
-        history.append(
-            {
-                "role": "assistant",
-                "content": content,
-                "tool_calls": [
-                    {"function": {"name": c.function.name, "arguments": dict(c.function.arguments)}}
-                    for c in calls
-                ],
-            }
-        )
-        results: list[ToolResult] = []
-        for c in calls:  # строго по порядку: другой связи между вызовом и результатом нет
-            name, arguments = c.function.name, c.function.arguments
-            key = call_key(name, arguments)
-            if key in seen:
-                result = ToolResult(
-                    "repeat",
-                    name,
-                    name if name in registry.names else UNKNOWN_TOOL,
-                    f"повтор: такой же вызов уже выполнен на итерации {seen[key]}; результат "
-                    "выше и не изменится. Не повторяй его — ответь пользователю.",
-                )
-            else:
-                seen[key] = iteration
-                result = registry.dispatch(name, arguments)
-            result = replace(result, requested_arguments=dict(arguments))
-            results.append(result)
-            history.append(result.message())
+        history.append(assistant_message(content, calls))
+        results = loop.handle(iteration, calls)
+        history.extend(r.message() for r in results)
         steps.append(
             Step(
                 iteration,
                 reply.prompt_eval_count,
                 reply.eval_count,
-                tuple(results),
+                results,
                 prompt_eval_ns=prompt_ns,
                 eval_ns=eval_ns,
             )

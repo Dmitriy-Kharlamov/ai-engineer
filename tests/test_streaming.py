@@ -265,3 +265,76 @@ def test_history_stays_valid_whatever_happens(policy: PartialPolicy, ending: str
     after = FakeStreamingClient(chunks("Третий."))
     drain(conv.ask_stream(after, "m", question="3"))
     validate_alternation(after.calls[0])  # следующий ход уходит в правильной форме
+
+
+# ---------------------------------------------------------------------------
+# Вызовы инструментов в потоке (Ф4-08)
+# ---------------------------------------------------------------------------
+@dataclass
+class _Fn:
+    name: str
+    arguments: Mapping[str, Any]
+
+
+@dataclass
+class _Call:
+    function: _Fn
+
+
+@dataclass
+class ToolMessage:
+    content: str | None
+    tool_calls: list[_Call] | None = None
+
+
+@dataclass
+class FakeToolClient:
+    script: list[FakeChunk]
+    tools_seen: list[Sequence[Mapping[str, Any]]] = field(default_factory=list)
+
+    async def chat(
+        self,
+        *,
+        model: str,
+        messages: Sequence[Mapping[str, Any]],
+        tools: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+        stream: Literal[True],
+    ) -> AsyncIterator[StreamChunk]:
+        self.tools_seen.append(tools)
+
+        async def gen() -> AsyncIterator[StreamChunk]:
+            for c in self.script:
+                yield c
+
+        return gen()
+
+
+async def test_tool_calls_from_stream_are_collected_in_order() -> None:
+    from ragkit.streaming import StreamToolCall, astream_tool_chat
+
+    calls = [_Call(_Fn("search", {"q": "a"})), _Call(_Fn("read", {"name": "b.md"}))]
+    script: list[FakeChunk] = [
+        FakeChunk(ToolMessage("", calls[:1])),  # type: ignore[arg-type]
+        FakeChunk(ToolMessage("", calls[1:])),  # type: ignore[arg-type]
+        *chunks(),
+    ]
+    client = FakeToolClient(script)
+    stream = await astream_tool_chat(client, "m", [], [{"type": "function"}])
+    async with stream:
+        text = "".join([d async for d in stream])
+    assert text == ""
+    assert stream.tool_calls == (
+        StreamToolCall("search", {"q": "a"}),
+        StreamToolCall("read", {"name": "b.md"}),
+    )
+    assert client.tools_seen == [[{"type": "function"}]]
+
+
+async def test_plain_stream_has_no_tool_calls() -> None:
+    from ragkit.streaming import astream_tool_chat
+
+    stream = await astream_tool_chat(FakeToolClient(chunks("а", "б")), "m", [], [])
+    async with stream:
+        assert "".join([d async for d in stream]) == "аб"
+    assert stream.tool_calls == ()

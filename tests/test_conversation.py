@@ -221,3 +221,29 @@ def test_append_rejects_broken_history() -> None:
     with pytest.raises(BrokenHistoryError):
         conversation.append(A)
     assert len(conversation.history) == 2
+
+
+def test_commit_turn_with_tool_chain() -> None:
+    from ragkit.conversation import CharRatioEstimate
+
+    conv = Conversation(CHAT, budget=10_000, count_tokens=CharRatioEstimate(2.0))
+    sent = conv.outgoing(question="Погода?")
+    produced: list[Message] = [
+        {"role": "assistant", "content": "", "tool_calls": [{"function": {"name": "w"}}]},
+        {"role": "tool", "tool_name": "w", "content": "−3"},
+        {"role": "assistant", "content": "−3 °C"},
+    ]
+    record = conv.commit_turn(sent, produced, prompt_eval_count=10, eval_count=5)
+    assert [m["role"] for m in conv.history] == ["user", "assistant", "tool", "assistant"]
+    assert record.answer == "−3 °C" and record.prompt_eval_count == 10
+
+
+def test_commit_turn_rejects_unfinished_chain() -> None:
+    from ragkit.conversation import CharRatioEstimate
+
+    conv = Conversation(CHAT, budget=10_000, count_tokens=CharRatioEstimate(2.0))
+    sent = conv.outgoing(question="Погода?")
+    unfinished = [{"role": "assistant", "content": "", "tool_calls": [{"function": {}}]}]
+    with pytest.raises(BrokenHistoryError):
+        conv.commit_turn(sent, unfinished)
+    assert conv.history == ()

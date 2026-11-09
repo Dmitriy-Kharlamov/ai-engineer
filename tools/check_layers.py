@@ -9,8 +9,8 @@ from pathlib import Path
 
 # пакет → какие пакеты ему импортировать ЗАПРЕЩЕНО
 FORBIDDEN: dict[str, frozenset[str]] = {
-    "ragkit": frozenset({"api", "services"}),
-    "services": frozenset({"api"}),
+    "ragkit": frozenset({"api", "services", "docqa"}),
+    "services": frozenset({"api", "docqa"}),
 }
 
 

@@ -19,6 +19,9 @@
 - Потоковый ход (ask_stream, Ф4-04): пользователь видит ответ раньше, чем известно,
   законченный ли он. Что записать в историю, если поток оборвался, решает PartialPolicy —
   параметром, а не по умолчанию «как получится».
+- Ход с инструментами (commit_turn, Ф4-08) — это не пара, а цепочка: user → assistant с
+  вызовами → результаты → … → ответ. Цикл живёт снаружи (ragkit.tools, CLI), а в историю
+  ход попадает только законченным и целиком — тот же контракт, что у ask.
 """
 
 import math
@@ -283,10 +286,31 @@ class Conversation:
         eval_count: int | None,
     ) -> TurnRecord:
         """Записать ход целиком: вопрос и ответ одной парой, и строку в журнал."""
+        return self._record(
+            messages,
+            [{"role": "assistant", "content": content}],
+            content,
+            outcome=outcome,
+            prompt_eval_count=prompt_eval_count,
+            prompt_eval_ms=prompt_eval_ms,
+            eval_count=eval_count,
+        )
+
+    def _record(
+        self,
+        messages: Sequence[Message],
+        produced: Sequence[Message],
+        content: str,
+        *,
+        outcome: str,
+        prompt_eval_count: int | None,
+        prompt_eval_ms: float | None,
+        eval_count: int | None,
+    ) -> TurnRecord:
         self._history = (
             *self._history,
             _frozen(messages[-1]),
-            _frozen({"role": "assistant", "content": content}),
+            *(_frozen(m) for m in produced),
         )
         record = TurnRecord(
             number=len(self._records) + 1,
@@ -303,6 +327,35 @@ class Conversation:
         )
         self._records = (*self._records, record)
         return record
+
+    def commit_turn(
+        self,
+        sent: Sequence[Message],
+        produced: Sequence[Message],
+        *,
+        prompt_eval_count: int | None = None,
+        prompt_eval_ms: float | None = None,
+        eval_count: int | None = None,
+    ) -> TurnRecord:
+        """Записать законченный ход из нескольких сообщений: вопрос — последнее из sent
+        (как его вернул outgoing), produced — всё, что дал цикл, до ответа модели включительно.
+
+        Счётчики — за весь ход (сумма по обращениям). Ход, который не кончился ответом модели,
+        не записывается: BrokenHistoryError.
+        """
+        last = produced[-1] if produced else None
+        if last is None or last.get("role") != "assistant" or last.get("tool_calls"):
+            raise BrokenHistoryError("ход записывается только законченным: последним — ответ")
+        validate_alternation([*self._system(), *self._history, sent[-1], *produced], outgoing=False)
+        return self._record(
+            sent,
+            produced,
+            str(last.get("content") or ""),
+            outcome="stop",
+            prompt_eval_count=prompt_eval_count,
+            prompt_eval_ms=prompt_eval_ms,
+            eval_count=eval_count,
+        )
 
     def ask(
         self,

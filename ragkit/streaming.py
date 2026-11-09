@@ -18,6 +18,11 @@ done_reason приходит в последнем куске. Поэтому з
   with; брошенный без close() поток держит соединение (замер: week-04/lesson_04.py,
   задание 6).
 
+- вызовы инструментов (Ф4-08): ollama присылает их в куске потока, в message.tool_calls,
+  а не в тексте. Сборщик копит их вместе с дельтами и кладёт в конверт; запрос с tools= —
+  astream_tool_chat. До чек-поинта поток инструменты не видел вовсе: вызов в потоковом
+  режиме молча терялся бы, а ход выглядел бы как пустой ответ.
+
 Три таймаута (только в AsyncChatStream — синхронное чтение нечем прервать):
 первый кусок не пришёл; куски шли и перестали; поток идёт, но не кончается. Последний
 таймаутом на кусок не ловится — нужен общий дедлайн, а надёжнее всего num_predict на
@@ -74,6 +79,20 @@ class StreamingChatClient(Protocol):
     ) -> Iterator[StreamChunk]: ...
 
 
+class AsyncToolStreamingChatClient(Protocol):
+    """Как AsyncStreamingChatClient, но с описаниями инструментов (ollama.AsyncClient)."""
+
+    async def chat(
+        self,
+        *,
+        model: str,
+        messages: Sequence[Mapping[str, Any]],
+        tools: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+        stream: Literal[True],
+    ) -> AsyncIterator[StreamChunk]: ...
+
+
 class AsyncStreamingChatClient(Protocol):
     async def chat(
         self,
@@ -83,6 +102,14 @@ class AsyncStreamingChatClient(Protocol):
         options: Mapping[str, Any] | None = None,
         stream: Literal[True],
     ) -> AsyncIterator[StreamChunk]: ...
+
+
+@dataclass(frozen=True)
+class StreamToolCall:
+    """Вызов инструмента, пришедший в потоке: имя и аргументы, как их написала модель."""
+
+    name: str
+    arguments: Mapping[str, Any]
 
 
 @dataclass(frozen=True)
@@ -97,6 +124,7 @@ class Envelope:
     total_ns: int
     load_ns: int
     chunks: int  # сколько кусков пришло, включая последний
+    tool_calls: tuple[StreamToolCall, ...] = ()  # из всех кусков потока, по порядку
 
 
 class StreamIncomplete(IncompleteResponseError):
@@ -148,6 +176,7 @@ class _Assembler:
 
     def __init__(self) -> None:
         self._parts: list[str] = []
+        self._calls: list[StreamToolCall] = []
         self.chunks = 0
         self.envelope: Envelope | None = None
 
@@ -161,6 +190,9 @@ class _Assembler:
         self.chunks += 1
         delta = chunk.message.content or ""
         self._parts.append(delta)
+        for call in getattr(chunk.message, "tool_calls", None) or ():
+            function = call.function
+            self._calls.append(StreamToolCall(str(function.name), dict(function.arguments or {})))
         if chunk.done:
             self.envelope = Envelope(
                 done_reason=chunk.done_reason or "",
@@ -171,6 +203,7 @@ class _Assembler:
                 total_ns=chunk.total_duration or 0,
                 load_ns=chunk.load_duration or 0,
                 chunks=self.chunks,
+                tool_calls=tuple(self._calls),
             )
         return delta
 
@@ -335,6 +368,11 @@ class AsyncChatStream:
             raise RuntimeError("поток ещё не дочитан: конверт приходит в последнем куске")
         return self._asm.envelope
 
+    @property
+    def tool_calls(self) -> tuple[StreamToolCall, ...]:
+        """Вызовы из законченного потока; до конца потока их список ещё не окончателен."""
+        return self.envelope.tool_calls
+
     async def aclose(self) -> None:
         aclose = getattr(self._chunks, "aclose", None)
         if aclose is not None:
@@ -363,4 +401,21 @@ async def astream_chat(
 ) -> AsyncChatStream:
     """Асинхронный поток с таймаутами. Запрос уходит при первом чтении, не здесь."""
     chunks = await client.chat(model=model, messages=messages, options=options, stream=True)
+    return AsyncChatStream(chunks, timeouts or StreamTimeouts(), clock)
+
+
+async def astream_tool_chat(
+    client: AsyncToolStreamingChatClient,
+    model: str,
+    messages: Sequence[Mapping[str, Any]],
+    tools: Sequence[Mapping[str, Any]],
+    options: Mapping[str, Any] | None = None,
+    *,
+    timeouts: StreamTimeouts | None = None,
+    clock: Callable[[], float] = time.monotonic,
+) -> AsyncChatStream:
+    """Поток с описаниями инструментов: дельты текста, вызовы — в .tool_calls после конца."""
+    chunks = await client.chat(
+        model=model, messages=messages, tools=tools, options=options, stream=True
+    )
     return AsyncChatStream(chunks, timeouts or StreamTimeouts(), clock)

@@ -16,10 +16,14 @@ dependencies = [
     "pyjwt>=2.10",
     "bcrypt>=4.2",
     "httpx>=0.28",  # services/http_retry.py: клиент к чужим API (Ф3-10)
+    "ollama>=0.6.3",  # docqa (Ф4-08): CLI работает с локальной моделью — нужен и без dev
 ]
 
+[project.scripts]
+docqa = "docqa.cli:main"
+
 [tool.setuptools]
-packages = ["ragkit", "api", "api.routers", "services", "tools"]   # в корне ещё week-*/ и todo/ — берём явно
+packages = ["ragkit", "api", "api.routers", "services", "tools", "docqa"]   # в корне ещё week-*/ и todo/ — берём явно
 
 [project.optional-dependencies]
 dev = [
@@ -41,7 +45,7 @@ dev = [
 # ---------------------------------------------------------------------------
 [tool.mypy]
 python_version = "3.14"
-files = ["ragkit", "api", "services", "tools", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py", "week-03/lesson_09", "week-03/lesson_10.py", "week-03/lesson_10", "week-04/lesson_01.py", "week-04/lesson_02.py", "week-04/lesson_03.py", "week-04/lesson_04.py"]   # lesson_05_any.py — намеренные ошибки
+files = ["ragkit", "api", "services", "tools", "docqa", "tests", "week-03/lesson_05.py", "week-03/lesson_06.py", "week-03/lesson_07.py", "week-03/lesson_08.py", "week-03/lesson_09", "week-03/lesson_10.py", "week-03/lesson_10", "week-04/lesson_01.py", "week-04/lesson_02.py", "week-04/lesson_03.py", "week-04/lesson_04.py"]   # lesson_05_any.py — намеренные ошибки
 # week-04/lesson_05.py и дальше — отдельным запуском: `mypy week-04/lesson_05.py`. Имя модуля
 # совпадает с week-03/lesson_05.py, а в одном запуске mypy два модуля lesson_05 не пускает.
 strict = true
