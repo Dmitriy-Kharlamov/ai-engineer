@@ -11,11 +11,16 @@
 4. Есть вызовы — ToolLoop (ragkit.tools) выполняет их: повтор одинакового вызова не
    исполняется, ошибка становится результатом для модели, порядок результатов — порядок
    вызовов. Нет вызовов — это ответ: ход записывается в историю (commit_turn).
-   По умолчанию в историю идут только вопрос и ответ, а цепочка вызовов с текстами
-   документов живёт один ход (keep_tool_results=False). Причина — Ф4-03, задание 6:
-   документ с инструкцией, оставшийся в истории, давал инструкцию на 10-м ходу в 5/10, а
-   вышедший из окна — 0/10; и каждый ход переотправлял бы все прочитанные документы.
-   Цена: на следующем ходу модель не видит прочитанного и читает заново.
+   Что из хода попадает в историю — HistoryMode:
+     full    — цепочка целиком, с текстами документов;
+     stubs   — вызовы остаются, а текст результата заменён пометкой (по умолчанию);
+     answers — только вопрос и ответ.
+   Почему не full: документ с инструкцией, оставшийся в истории, давал её на 10-м ходу в
+   5/10, а вышедший из окна — 0/10 (Ф4-03, задание 6), и каждый ход переотправлял бы все
+   прочитанные документы. Почему не answers: в присесте 1 с answers модель после первого
+   хода перестала звать инструменты — 0 вызовов в ходах 2–4, ответ «электронные книги
+   можно вернуть» против «возврату не подлежат» в returns.md и «поиск не дал результатов»
+   без единого поиска. История — это пример: ходы без вызовов учат отвечать без вызовов.
 5. Любой отказ посреди хода — исключение наружу, и история не меняется: в неё не попадает
    ни обрывок потока, ни половина цепочки вызовов (Ф4-04: PartialPolicy.DISCARD).
 
@@ -25,7 +30,7 @@
 import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from ragkit.conversation import BudgetExceededError, CharRatioEstimate, Conversation, LastTurns
 from ragkit.cost import CostGuard, Price
@@ -43,6 +48,7 @@ from ragkit.tools import (
 from .documents import DocumentStore, build_registry
 
 Msg = Mapping[str, Any]
+HistoryMode = Literal["full", "stubs", "answers"]
 
 DOCQA_PROMPT = Prompt(
     name="docqa",
@@ -83,7 +89,7 @@ class Settings:
     seed: int = 42
     max_iterations: int = 5
     history_turns: int = 4  # LastTurns: system с постановкой задачи остаётся всегда
-    keep_tool_results: bool = False  # хранить ли в истории цепочку вызовов с документами
+    history_mode: HistoryMode = "stubs"  # что из хода попадает в историю, см. выше
     limit_usd: float = 0.02  # порог цены одного обращения
     timeouts: StreamTimeouts = StreamTimeouts(first=90.0, between=20.0, total=240.0)
 
@@ -132,6 +138,20 @@ class TurnReport:
     iterations: list[Iteration] = field(default_factory=list)
 
     @property
+    def calls(self) -> tuple[ToolResult, ...]:
+        return tuple(r for i in self.iterations for r in i.calls)
+
+    @property
+    def documents_read(self) -> list[str]:
+        """Какие документы прочитаны в этом ходе — по журналу исполнения, а не по ответу."""
+        names: list[str] = []
+        for r in self.calls:
+            name = (r.arguments or {}).get("name")
+            if r.ok and r.tool_name == "read_document" and name and name not in names:
+                names.append(str(name))
+        return names
+
+    @property
     def prompt_tokens(self) -> int:
         return sum(i.prompt_eval_count for i in self.iterations)
 
@@ -174,8 +194,7 @@ class Session:
             f"окно num_ctx={s.num_ctx}, ответ num_predict={s.num_predict} → вход ≤ {s.window} "
             f"токенов по оценке (из них схемы {len(self.schemas)} инструментов ≈ "
             f"{self.tools_tokens})",
-            f"история: {self.conversation.policy!r}, результаты инструментов в истории: "
-            f"{'да' if s.keep_tool_results else 'нет, только вопрос и ответ'}; "
+            f"история: {self.conversation.policy!r}, ход в истории — {s.history_mode}; "
             f"оценщик {ESTIMATOR.chars_per_token} "
             f"симв/ток, база {ESTIMATOR.base}, {ESTIMATOR.per_message} на сообщение",
             f"цена: {PRICE.provider} {PRICE.model} на {PRICE.as_of}, порог {s.limit_usd} $ "
@@ -246,7 +265,7 @@ class Session:
                 validate_tool_results([*sent, *produced])
                 self.conversation.commit_turn(
                     sent,
-                    produced if s.keep_tool_results else produced[-1:],
+                    for_history(produced, s.history_mode),
                     prompt_eval_count=report.prompt_tokens,
                     prompt_eval_ms=sum(i.prompt_ms for i in report.iterations),
                     eval_count=report.output_tokens,
@@ -264,5 +283,23 @@ class Session:
         )
 
 
-def history_roles(history: Sequence[Msg]) -> list[str]:
-    return [str(m.get("role")) for m in history]
+def for_history(produced: Sequence[Mapping[str, Any]], mode: HistoryMode) -> list[Msg]:
+    """Что из законченного хода записать в историю."""
+    if mode == "full":
+        return list(produced)
+    if mode == "answers":
+        return list(produced[-1:])
+    out: list[Msg] = []
+    for m in produced:
+        if m.get("role") == "tool":
+            size = len(str(m.get("content") or ""))
+            out.append(
+                {
+                    **m,
+                    "content": f"[результат {m.get('tool_name')} ({size} симв.) не хранится в "
+                    "истории; чтобы опереться на него в новом ответе — вызови инструмент снова]",
+                }
+            )
+        else:
+            out.append(m)
+    return out

@@ -182,8 +182,10 @@ async def test_turn_with_tool_streams_answer_and_commits_whole_turn() -> None:
     assert "".join(out.text) == report.answer
     assert [r.kind for r in out.tools] == ["ok"]
     history = s.conversation.history
-    assert [m["role"] for m in history] == ["user", "assistant"]  # документы живут один ход
+    assert [m["role"] for m in history] == ["user", "assistant", "tool", "assistant"]
+    assert "не хранится в истории" in history[2]["content"]  # вызов есть, текста нет
     assert history[-1]["content"] == report.answer
+    assert report.documents_read == []  # искали, но не читали
     assert client.closed == [True, True]  # каждый поток закрыт явно
     first = client.sent[0]
     assert first[0]["role"] == "system" and first[0]["content"] == DOCQA_PROMPT.system
@@ -244,13 +246,35 @@ async def test_second_turn_sends_first_turn_in_history() -> None:
     assert roles == ["system", "user", "assistant", "user"]
 
 
-async def test_keep_tool_results_stores_whole_chain() -> None:
+@pytest.mark.parametrize(
+    ("mode", "roles"),
+    [
+        ("full", ["user", "assistant", "tool", "assistant"]),
+        ("stubs", ["user", "assistant", "tool", "assistant"]),
+        ("answers", ["user", "assistant"]),
+    ],
+)
+async def test_history_modes(mode: str, roles: list[str]) -> None:
     client = FakeClient([calls(("list_documents", {})), answer("Шесть документов.")])
-    s, _ = session(client, keep_tool_results=True)
+    s, _ = session(client, history_mode=mode)
     await s.ask("Что есть в папке?")
     history = s.conversation.history
-    assert [m["role"] for m in history] == ["user", "assistant", "tool", "assistant"]
+    assert [m["role"] for m in history] == roles
     validate_tool_results(history)
+    tool_text = " ".join(str(m["content"]) for m in history if m["role"] == "tool")
+    assert ("delivery.md" in tool_text) == (mode == "full")
+
+
+async def test_documents_read_comes_from_execution_log() -> None:
+    client = FakeClient(
+        [
+            calls(("read_document", {"name": "returns.md"}), ("read_document", {"name": "нет.md"})),
+            answer("Читал returns.md и ещё politics.md."),
+        ]
+    )
+    s, _ = session(client)
+    report = await s.ask("Возврат?")
+    assert report.documents_read == ["returns.md"]  # несуществующий не считается
 
 
 async def test_document_text_is_not_resent_on_next_turn() -> None:

@@ -120,6 +120,16 @@ async def run(questions: list[str] | None, session: Session, term: Terminal) -> 
             term.line(f"[ответа нет] {failure(error)}")
             return
         term.end()
+        read = report.documents_read
+        if read:
+            term.line(f"  [прочитано в этом ходе: {', '.join(read)}]")
+        else:
+            calls = len(report.calls)
+            term.line(
+                "  [в этом ходе документы не читались"
+                + (f" (вызовов инструментов: {calls})" if calls else ", инструменты не вызывались")
+                + " — ответ не опирается на текст из папки]"
+            )
         term.debug(
             f"ход {len(session.turns)}: обращений {len(report.iterations)}, промпт всего "
             f"{report.prompt_tokens} ток., ответ всего {report.output_tokens} ток.; в истории "
@@ -149,6 +159,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--num-ctx", type=int, default=Settings.num_ctx)
     parser.add_argument("--num-predict", type=int, default=Settings.num_predict)
     parser.add_argument("--max-iterations", type=int, default=Settings.max_iterations)
+    parser.add_argument(
+        "--history",
+        choices=["full", "stubs", "answers"],
+        default=Settings.history_mode,
+        help="что из хода хранить в истории: всё, вызовы с пометками вместо текста, ответы",
+    )
     parser.add_argument("--limit-usd", type=float, default=Settings.limit_usd)
     parser.add_argument("-q", "--question", action="append", help="вопрос; можно несколько")
     parser.add_argument("--debug", action="store_true", help="версия промпта, бюджет, токены")
@@ -165,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
         num_predict=args.num_predict,
         max_iterations=args.max_iterations,
         limit_usd=args.limit_usd,
+        history_mode=args.history,
     )
     if args.log:
         args.log.parent.mkdir(parents=True, exist_ok=True)
