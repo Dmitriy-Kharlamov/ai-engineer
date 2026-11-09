@@ -133,7 +133,7 @@ class StreamIncomplete(IncompleteResponseError):
     def __init__(self, envelope: Envelope, partial: str) -> None:
         super().__init__(
             f"ответ неполный: done_reason={envelope.done_reason!r}, "
-            f"уже показано {len(partial)} символов, конец: {partial[-40:]!r}"
+            f"получено {len(partial)} символов, конец: {partial[-40:]!r}"
         )
         self.envelope = envelope
         self.partial = partial
@@ -152,7 +152,7 @@ class StreamTimeout(RAGError):
 
     def __init__(self, what: str, limit: float, elapsed: float, partial: str) -> None:
         super().__init__(
-            f"{what}: {limit:g} с, прошло {elapsed:.2f} с, показано {len(partial)} симв."
+            f"{what}: {limit:g} с, прошло {elapsed:.2f} с, получено {len(partial)} симв."
         )
         self.limit = limit
         self.elapsed = elapsed

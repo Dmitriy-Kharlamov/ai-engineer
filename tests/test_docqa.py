@@ -226,7 +226,10 @@ async def test_window_budget_refuses_before_sending() -> None:
 async def test_broken_stream_leaves_history_unchanged() -> None:
     text = "В папке шесть документов: часы работы, доставка, возвраты и ещё"
     client = FakeClient(
-        [calls(("list_documents", {})), answer(*(w + " " for w in text.split()), reason="length")]
+        [
+            calls(("read_document", {"name": "delivery.md"})),
+            answer(*(w + " " for w in text.split()), reason="length"),
+        ]
     )
     s, out = session(client)
     with pytest.raises(StreamIncomplete):

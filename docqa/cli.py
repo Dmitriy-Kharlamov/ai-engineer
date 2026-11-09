@@ -136,8 +136,8 @@ def failure(error: BaseException, shown: bool) -> str:
         return f"модель не закончила за отведённое число обращений: {error}"
     if isinstance(error, UnparsedToolCallError):
         return (
-            f"ответа нет — модель вернула вызов инструмента текстом, и код не смог его "
-            f"разобрать; ничего не выполнено. {error}"
+            "модель вернула вызов инструмента текстом, и код не смог его разобрать; "
+            f"ничего не выполнено. {error}"
         )
     if isinstance(error, StreamTimeout):
         return f"ответ оборван — {error}.{partial}"
@@ -248,6 +248,11 @@ def main(argv: list[str] | None = None) -> int:
         help="воспроизвести отказ: " + "; ".join(f"{k} — {v}" for k, v in FAULTS.items()),
     )
     parser.add_argument("--events", type=Path, help="журнал событий, JSON по строке")
+    parser.add_argument(
+        "--no-nudge",
+        action="store_true",
+        help="показывать ответ без чтения документов сразу, не подталкивая модель",
+    )
     parser.add_argument("-q", "--question", action="append", help="вопрос; можно несколько")
     parser.add_argument("--debug", action="store_true", help="версия промпта, бюджет, токены")
     parser.add_argument("--log", type=Path, help="записать расшифровку сессии в файл")
@@ -273,6 +278,7 @@ def main(argv: list[str] | None = None) -> int:
         quarantine=not args.unsafe,
         redact_addresses=not args.unsafe,
         allowed_domains=tuple(args.allow_domain),
+        nudge=not args.no_nudge,
     )
     if args.log:
         args.log.parent.mkdir(parents=True, exist_ok=True)

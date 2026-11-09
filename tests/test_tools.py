@@ -328,3 +328,17 @@ def test_plain_answer_is_not_a_raw_call() -> None:
     text = "Курьер — 290 рублей; JSON вида {a: 1} в ответе не вызов."
     assert not looks_like_raw_call(text)
     assert parse_raw_tool_calls(text) == []
+
+
+def test_bare_raw_call_needs_known_tool_names() -> None:
+    from ragkit.tools import looks_like_raw_call, parse_raw_tool_calls
+
+    names = ("list_documents", "search_documents", "read_document")
+    text = 'Ищу: search_documents {"query": "забрать заказ"} и list_documents {}'
+    assert not looks_like_raw_call(text)  # без имён голая форма не узнаётся
+    assert looks_like_raw_call(text, names)
+    assert parse_raw_tool_calls(text, names) == [
+        ("search_documents", {"query": "забрать заказ"}),
+        ("list_documents", {}),
+    ]
+    assert not looks_like_raw_call("инструмент read_document читает файл", names)

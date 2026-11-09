@@ -36,6 +36,10 @@
 * бюджет сессии — сумма фактической цены плюс оценка следующего обращения;
 * инструкция в документе (отказ 10): карантин строк до модели и вырезание чужих адресов
   на выходе — docqa.guards; что сработало, код говорит пользователю строкой notice.
+* подталкивание (по прогону 1 failures.txt и injection.txt): пока в ходе не прочитан ни
+  один документ, ответ придерживается; если ни один вызов не удался или ответ — обещание
+  («Давайте посмотрим…»), он не показывается, а модель получает одно сообщение кода.
+  В историю не идут ни придержанный ответ, ни сообщение кода.
 
 Что видит пользователь при каждом отказе — решает CLI, а не модель.
 """
@@ -43,6 +47,7 @@
 import asyncio
 import json
 import random
+import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -104,6 +109,24 @@ DOCQA_PROMPT_WARN = Prompt(
     user_template="{question}",
 )
 PROMPTS: dict[str, Prompt] = {"base": DOCQA_PROMPT, "warn": DOCQA_PROMPT_WARN}
+# Подталкивание: ход кончился ответом, а ни один документ не прочитан. В прогоне
+# failures.txt так кончились 01–03 («в документах нет информации» без чтения), 10a/10b
+# («Давайте посмотрим документ…» — и всё), а в injection.txt — 7 из 10 прогонов на клетку.
+# Этот ответ не показывается; модель получает одно сообщение кода и ещё одно обращение.
+# Подталкивание — только если ни один вызов в ходе не удался (01, 02, 12) или ответ —
+# обещание действия («Давайте посмотрим документ…»). Ответ после list_documents или поиска
+# без чтения бывает законным («что есть в папке?»): его код показывает с пометкой.
+INTENTION = re.compile(
+    r"^\W*(давайте|сейчас\b|посмотрим|проверим|я\s+(сейчас\s+)?(посмотрю|проверю|прочитаю|"
+    r"поищу|найду|открою)|let me|i will|i'll)",
+    re.IGNORECASE,
+)
+NUDGE = (
+    "[Сообщение программы, не пользователя.] В этом ходе ты не прочитал ни одного документа, "
+    "поэтому твой ответ пользователю не показан. Найди нужный документ (search_documents или "
+    "list_documents), прочитай его (read_document) и ответь по нему. Если документа по "
+    "вопросу в папке нет — так и скажи."
+)
 
 # Цена — модель на прайсе Anthropic (Ф4-07): локальная модель бесплатна, но предохранитель
 # проверяется на тех числах, которые были бы у платного API.
@@ -142,6 +165,7 @@ class Settings:
     quarantine: bool = True  # строки-инструкции из документов не доходят до модели
     redact_addresses: bool = True  # чужие адреса не доходят до пользователя
     allowed_domains: tuple[str, ...] = ()
+    nudge: bool = True  # ответ без чтения не показывать, а один раз подтолкнуть модель
     retry: RetryPolicy = field(default_factory=lambda: RETRY)
 
     @property
@@ -176,7 +200,7 @@ class ServerBusyError(RAGError):
 
     def __init__(self, status: int, attempts: int, waited: float, text: str) -> None:
         super().__init__(
-            f"сервер модели занят: {status} на {attempts} попыток из {attempts}, "
+            f"сервер модели не ответил: {status} на все {attempts} попытки, "
             f"ждали {waited:.1f} с; ответ сервера: {text}"
         )
         self.status = status
@@ -227,6 +251,7 @@ class TurnReport:
     iterations: list[Iteration] = field(default_factory=list)
     removed_addresses: list[str] = field(default_factory=list)
     quarantined: dict[str, list[str]] = field(default_factory=dict)
+    hidden_answer: str | None = None  # ответ без чтения, который код не показал
 
     @property
     def calls(self) -> tuple[ToolResult, ...]:
@@ -241,6 +266,10 @@ class TurnReport:
             if r.ok and r.tool_name == "read_document" and name and name not in names:
                 names.append(str(name))
         return names
+
+    @property
+    def nudged(self) -> bool:
+        return self.hidden_answer is not None
 
     @property
     def not_done(self) -> list[ToolResult]:
@@ -334,10 +363,14 @@ class Session:
             f"{s.timeouts.between} с, весь поток {s.timeouts.total} с; итераций ≤ "
             f"{s.max_iterations}; 429/503 — до {s.retry.attempts} попыток",
             "защиты: " + "; ".join(defenses),
+            "ответ без чтения документов: "
+            + ("придержать и один раз подтолкнуть модель" if s.nudge else "показывать сразу"),
         ]
 
     # -- одно обращение ----------------------------------------------------------------
-    async def _request(self, messages: Sequence[Msg], turn: int, number: int) -> _Answer:
+    async def _request(
+        self, messages: Sequence[Msg], turn: int, number: int, *, live: bool
+    ) -> _Answer:
         s = self.settings
         waited = 0.0
         for attempt in range(1, s.retry.attempts + 1):
@@ -345,6 +378,8 @@ class Session:
                 self.out.delta,
                 redactor_allowed=s.allowed_domains if s.redact_addresses else None,
                 keep_names=self.store.names(),
+                tool_names=self.registry.names,
+                live=live,
             )
             try:
                 stream = await astream_tool_chat(
@@ -356,7 +391,7 @@ class Session:
                 answer_filter.finish()
                 return _Answer(stream, answer_filter, attempt)
             except ollama.ResponseError as error:
-                retryable = error.status_code in RETRY_STATUSES and not answer_filter.shown
+                retryable = error.status_code in RETRY_STATUSES and not answer_filter.displayed
                 if not retryable or attempt == s.retry.attempts:
                     if retryable:
                         self.events.emit(
@@ -383,7 +418,9 @@ class Session:
                     error=error.error,
                 )
                 self.out.notice(
-                    f"сервер модели занят ({error.status_code}); попытка {attempt + 1} из "
+                    f"сервер модели ответил {error.status_code}"
+                    + (" — занят" if error.status_code in (429, 503) else "")
+                    + f"; попытка {attempt + 1} из "
                     f"{s.retry.attempts} через {pause:.1f} с"
                 )
                 await self.sleep(pause)
@@ -456,7 +493,9 @@ class Session:
                 f"{input_tokens} ток. ({source}; окно ≤ {s.window}), цена ≤ "
                 f"{estimate.cost:.5f} $ (порог {s.limit_usd})"
             )
-            got = await self._request(messages, turn, number)
+            # пока в ходе ничего не прочитано, ответ придерживается: вдруг он без чтения
+            live = not s.nudge or report.nudged or bool(report.documents_read)
+            got = await self._request(messages, turn, number, live=live)
             stream, answer_filter = got.stream, got.filter
             envelope = stream.envelope
             self.spent_usd += PRICE.cost(envelope.prompt_eval_count, envelope.eval_count)
@@ -464,8 +503,10 @@ class Session:
                 (c.name, c.arguments) for c in stream.tool_calls
             ]
             raw_call = not calls and answer_filter.suppressed
+            if calls or raw_call:
+                answer_filter.release()  # текст при вызовах — вступление, его можно показать
             if raw_call:
-                parsed = parse_raw_tool_calls(answer_filter.raw)
+                parsed = parse_raw_tool_calls(answer_filter.raw, self.registry.names)
                 self.events.emit(
                     "raw_call",
                     turn=turn,
@@ -482,7 +523,7 @@ class Session:
                 self.out.notice(
                     "модель написала вызов инструмента текстом, а не вызовом; код разобрал "
                     f"его и выполняет: {', '.join(n for n, _ in parsed)}"
-                    + ("; текст выше — не ответ" if answer_filter.shown else "")
+                    + ("; текст выше — не ответ" if answer_filter.displayed else "")
                 )
             results = loop.handle(number, calls) if calls else ()
             iteration = Iteration(
@@ -521,7 +562,27 @@ class Session:
                 f"decode {iteration.eval_ms:.0f} мс, done_reason={envelope.done_reason!r}, "
                 f"вызовов {len(calls)}"
             )
+            if (
+                not calls
+                and not answer_filter.live  # придержан: в ходе ещё ничего не прочитано
+                and (not any(r.ok for r in report.calls) or INTENTION.match(answer_filter.raw))
+            ):
+                held = {"role": "assistant", "content": answer_filter.shown}
+                report.hidden_answer = answer_filter.shown
+                self.events.emit(
+                    "nudge", turn=turn, request=number, hidden_answer=clip(answer_filter.raw)
+                )
+                self.out.notice(
+                    "модель ответила, не прочитав ни одного документа; этот ответ не показан "
+                    "— код просит её найти и прочитать документ"
+                )
+                produced += [held, {"role": "user", "content": NUDGE}]
+                self.counter.observe(
+                    messages, envelope.prompt_eval_count, envelope.eval_count, held
+                )
+                continue
             if not calls:
+                answer_filter.release()  # придержанный ответ после поиска — показать целиком
                 report = self._finish(turn, sent, produced, report, answer_filter)
                 self.counter.observe(
                     messages, envelope.prompt_eval_count, envelope.eval_count, produced[-1]
@@ -595,9 +656,14 @@ class Session:
             )
         produced.append({"role": "assistant", "content": report.answer})
         validate_tool_results([*sent, *produced])
+        # подталкивание и придержанный ответ в историю не идут: это не реплики диалога
+        kept = [m for m in produced if m.get("content") != NUDGE]
+        if report.hidden_answer is not None:
+            index = next(i for i, m in enumerate(produced) if m.get("content") == NUDGE) - 1
+            kept = [m for i, m in enumerate(produced) if i not in (index, index + 1)]
         self.conversation.commit_turn(
             sent,
-            for_history(produced, self.settings.history_mode),
+            for_history(kept, self.settings.history_mode),
             prompt_eval_count=report.prompt_tokens,
             prompt_eval_ms=sum(i.prompt_ms for i in report.iterations),
             eval_count=report.output_tokens,

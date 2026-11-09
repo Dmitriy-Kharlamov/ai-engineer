@@ -35,7 +35,7 @@ message.content, message.tool_calls[i].function.name и .arguments, done_reason.
 import inspect
 import json
 import re
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, Literal, Protocol, TypeVar
 
@@ -528,20 +528,41 @@ def run_tools(
 RAW_CALL = re.compile(r"</?tool_call>|\{\s*\"name\"\s*:", re.IGNORECASE)
 
 
-def looks_like_raw_call(text: str) -> bool:
-    """Похоже ли начало или весь текст ответа на вызов инструмента, а не на ответ человеку."""
-    return bool(RAW_CALL.search(text))
+def _bare_call(names: Collection[str]) -> re.Pattern[str] | None:
+    """«search_documents {"query": …}» — имя инструмента и сразу JSON-объект (Ф4-08, замер
+    инъекции: такой «ответ» дошёл до пользователя)."""
+    if not names:
+        return None
+    alternatives = "|".join(re.escape(n) for n in sorted(names, key=len, reverse=True))
+    return re.compile(rf"\b({alternatives})\s*\(?\s*(?=\{{\s*[\"}}])")
 
 
-def parse_raw_tool_calls(text: str) -> list[tuple[str, dict[str, Any]]]:
-    """Вызовы {"name": ..., "arguments": {...}} из текста; [] — если ни одного целого.
+def looks_like_raw_call(text: str, names: Collection[str] = ()) -> bool:
+    """Похож ли текст ответа на вызов инструмента, а не на ответ человеку.
 
-    Разбираются только целые JSON-объекты с строковым name и словарём arguments: обрывок
-    не угадывается. Выполнять разобранное или нет — решает цикл; аргументы всё равно
-    пройдут модель pydantic в диспетчере.
+    names — имена инструментов реестра: с ними узнаётся и голая форма «имя {аргументы}».
+    """
+    bare = _bare_call(names)
+    return bool(RAW_CALL.search(text)) or bool(bare and bare.search(text))
+
+
+def parse_raw_tool_calls(
+    text: str, names: Collection[str] = ()
+) -> list[tuple[str, dict[str, Any]]]:
+    """Вызовы из текста; [] — если ни одного целого.
+
+    Две формы: {"name": ..., "arguments": {...}} (как в шаблоне qwen2.5) и, если даны
+    names, «имя {аргументы}». Разбираются только целые JSON-объекты: обрывок не
+    угадывается. Выполнять разобранное или нет — решает цикл; аргументы всё равно пройдут
+    модель pydantic в диспетчере.
     """
     decoder = json.JSONDecoder()
     calls: list[tuple[str, dict[str, Any]]] = []
+    bare = _bare_call(names)
+    named: dict[int, str] = {}  # позиция «{» → имя перед ней
+    if bare is not None:
+        for m in bare.finditer(text):
+            named[text.index("{", m.end())] = m.group(1)
     position = 0
     while (start := text.find("{", position)) != -1:
         try:
@@ -550,10 +571,10 @@ def parse_raw_tool_calls(text: str) -> list[tuple[str, dict[str, Any]]]:
             position = start + 1
             continue
         position = end
-        if (
-            isinstance(value, dict)
-            and isinstance(value.get("name"), str)
-            and isinstance(value.get("arguments", {}), dict)
-        ):
+        if not isinstance(value, dict):
+            continue
+        if isinstance(value.get("name"), str) and isinstance(value.get("arguments", {}), dict):
             calls.append((value["name"], dict(value.get("arguments", {}))))
+        elif start in named:
+            calls.append((named[start], dict(value)))
     return calls

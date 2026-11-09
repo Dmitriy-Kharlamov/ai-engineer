@@ -235,7 +235,7 @@ async def test_window_overflow_mid_turn_refuses_and_keeps_history(tmp_path: Path
 
 async def test_session_budget_counts_actual_spend() -> None:
     client = FakeClient([answer("Один."), answer("Два."), answer("Три.")])
-    s, _, _ = make(client, session_limit_usd=1.0)
+    s, _, _ = make(client, session_limit_usd=1.0, nudge=False)
     await s.ask("Раз")
     # потрачено по факту + меньше, чем стоит один только выход следующего (512 × 10 $/MTok)
     s.settings = replace(s.settings, session_limit_usd=s.spent_usd + 0.005)
@@ -250,7 +250,7 @@ async def test_session_budget_counts_actual_spend() -> None:
 async def test_busy_server_is_retried_with_notice() -> None:
     busy = ollama.ResponseError("server busy", 503)
     client = FakeClient([busy, busy, answer("Курьер — 290 ₽.")])
-    s, out, pauses = make(client)
+    s, out, pauses = make(client, nudge=False)
     report = await s.ask("Доставка?")
     assert report.answer == "Курьер — 290 ₽." and report.iterations[0].attempts == 3
     assert pauses == [0.5, 1.0]  # полный джиттер при rng=0,5: 0,5·1 и 0,5·2
@@ -263,7 +263,7 @@ async def test_busy_forever_gives_up_honestly() -> None:
     with pytest.raises(ServerBusyError) as info:
         await s.ask("Доставка?")
     assert len(client.sent) == 4 and len(pauses) == 3 and s.conversation.history == ()
-    assert "4 попыток" in str(info.value)
+    assert "все 4 попытки" in str(info.value)
 
 
 async def test_client_error_is_not_retried() -> None:
@@ -371,3 +371,78 @@ async def test_next_turn_in_full_mode_is_counted_from_actual() -> None:
     await s.ask("Доставка?")
     second = await s.ask("А бесплатно бывает?")
     assert second.iterations[0].estimate_source == "факт+оценка"
+
+
+# ---------------------------------------------------------------------------
+# Подталкивание: ответ без чтения
+# ---------------------------------------------------------------------------
+async def test_answer_without_any_tool_is_hidden_and_model_is_nudged() -> None:
+    from docqa.session import NUDGE
+
+    client = FakeClient(
+        [
+            answer("Доставка у нас всегда бесплатная."),
+            calls(("read_document", {"name": "delivery.md"})),
+            answer("Курьер — 290 ₽ (delivery.md)."),
+        ]
+    )
+    s, out, _ = make(client)
+    report = await s.ask("Сколько стоит доставка?")
+    assert "".join(out.text) == "Курьер — 290 ₽ (delivery.md)."  # выдумку не видно
+    assert report.hidden_answer == "Доставка у нас всегда бесплатная."
+    assert client.sent[1][-1] == {"role": "user", "content": NUDGE}
+    history = json.dumps([dict(m) for m in s.conversation.history], ensure_ascii=False)
+    assert "бесплатная" not in history and "Сообщение программы" not in history
+    assert [m["role"] for m in s.conversation.history] == [
+        "user", "assistant", "tool", "assistant",
+    ]  # fmt: skip
+    assert any("не показан" in n for n in out.notices)
+
+
+async def test_intention_after_list_is_nudged() -> None:
+    client = FakeClient(
+        [
+            calls(("list_documents", {})),
+            answer('Давайте посмотрим документ "Доставка".'),
+            calls(("read_document", {"name": "delivery.md"})),
+            answer("290 ₽."),
+        ]
+    )
+    s, out, _ = make(client)
+    report = await s.ask("Доставка?")
+    assert report.nudged and report.documents_read == ["delivery.md"]
+    assert "Давайте" not in "".join(out.text)
+
+
+async def test_nudge_is_once_and_second_answer_is_shown() -> None:
+    client = FakeClient([answer("Не знаю."), answer("Всё равно не знаю.")])
+    s, out, _ = make(client)
+    report = await s.ask("Доставка?")
+    assert report.nudged and report.answer == "Всё равно не знаю." == "".join(out.text)
+    assert len(client.sent) == 2 and report.documents_read == []
+
+
+async def test_nudge_can_be_switched_off() -> None:
+    client = FakeClient([answer("Доставка бесплатная.")])
+    s, out, _ = make(client, nudge=False)
+    report = await s.ask("Доставка?")
+    assert not report.nudged and "".join(out.text) == "Доставка бесплатная."
+
+
+async def test_bare_raw_call_is_executed_not_shown() -> None:
+    raw = text_chunks("search_", 'documents {"query": ', '"доставка курьер"}')
+    client = FakeClient([raw, calls(("read_document", {"name": "delivery.md"})), answer("290 ₽.")])
+    s, out, _ = make(client)
+    report = await s.ask("Доставка?")
+    assert report.iterations[0].raw_call and out.tools[0].tool_name == "search_documents"
+    assert "".join(out.text) == "290 ₽."
+
+
+async def test_first_call_client_scripts_only_the_first_request() -> None:
+    from docqa.faults import FirstCallClient
+
+    inner = FakeClient([answer("Пункт на Лесной, 5.")])
+    client = FirstCallClient(inner, "read_document", {"name": "delivery.md"})
+    s, _, _ = make(client)  # type: ignore[arg-type]
+    report = await s.ask("Где забрать?")
+    assert report.documents_read == ["delivery.md"] and len(inner.sent) == 1

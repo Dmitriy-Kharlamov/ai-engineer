@@ -136,22 +136,30 @@ class AnswerFilter:
     """Между потоком модели и терминалом.
 
     raw — что написала модель (для разбора вызова и для замера инъекции);
-    shown — что увидел пользователь (это и идёт в историю).
-    Последние hold символов всегда придержаны: «<tool_call>» или «{"name":» могут прийти
-    по кускам, и показывать начало, пока не ясно, что это, нельзя.
+    shown — что прошло фильтры (это и идёт в историю);
+    displayed — показан ли пользователю хоть символ (после него повтор запроса нельзя).
+    Хвост всегда придержан на hold символов: «<tool_call>», «{"name":» или
+    «search_documents {» могут прийти по кускам, и показывать начало, пока не ясно, что
+    это, нельзя. live=False — ничего не показывать до release(): так сессия придерживает
+    ответ, данный без чтения документов (подталкивание, Ф4-08).
     """
 
     out: Callable[[str], None]
     redactor_allowed: Collection[str] | None = ()  # None — не вырезать адреса
     keep_names: Collection[str] = ()
+    tool_names: Collection[str] = ()
+    live: bool = True
     hold: int = 16
     raw: str = ""
     shown: str = ""
+    displayed: bool = False
     suppressed: bool = False  # текст оказался вызовом: дальше ничего не показывается
     _pushed: int = 0
+    _pending: str = ""
     _redactor: DomainRedactor | None = None
 
     def __post_init__(self) -> None:
+        self.hold = max(self.hold, *(len(n) + 4 for n in self.tool_names), 0)
         if self.redactor_allowed is not None:
             self._redactor = DomainRedactor(self._show, self.redactor_allowed, self.keep_names)
 
@@ -160,9 +168,22 @@ class AnswerFilter:
         return self._redactor.removed if self._redactor else []
 
     def _show(self, text: str) -> None:
-        if text:
-            self.shown += text
+        if not text:
+            return
+        self.shown += text
+        if self.live:
+            self.displayed = True
             self.out(text)
+        else:
+            self._pending += text
+
+    def release(self) -> None:
+        """Показать придержанное и дальше показывать сразу."""
+        self.live = True
+        if self._pending:
+            pending, self._pending = self._pending, ""
+            self.displayed = True
+            self.out(pending)
 
     def _push(self, text: str) -> None:
         if self._redactor is not None:
@@ -174,7 +195,7 @@ class AnswerFilter:
         self.raw += delta
         if self.suppressed:
             return
-        if looks_like_raw_call(self.raw):
+        if looks_like_raw_call(self.raw, self.tool_names):
             self.suppressed = True
             return
         safe = len(self.raw) - self.hold

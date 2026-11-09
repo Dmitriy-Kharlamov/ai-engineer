@@ -31,6 +31,7 @@ FAULTS: dict[str, str] = {
     "tool-crash": "чтение документа падает с PermissionError (папка недоступна)",
     "raw-call": "1-е обращение: вызов пришёл текстом в content, с мусорным токеном впереди",
     "raw-call-broken": "1-е обращение: вызов текстом, JSON оборван",
+    "raw-call-bare": "1-е обращение: «search_documents {...}» текстом — форма из injection.txt",
     "loop": "каждое обращение: list_documents() — один и тот же вызов",
     "limit": "каждое обращение: search_documents с новым запросом — без повторов",
     "read-all": "1-е обращение: read_document для каждого документа сразу",
@@ -47,6 +48,7 @@ Fault = Literal[
     "tool-crash",
     "raw-call",
     "raw-call-broken",
+    "raw-call-bare",
     "loop",
     "limit",
     "read-all",
@@ -147,6 +149,8 @@ class FaultyClient:
             )
         if f == "raw-call-broken" and n == 1:
             return _text("<tool_call>\n", '{"name": "read_document", "argum')
+        if f == "raw-call-bare" and n == 1:
+            return _text("search_", 'documents {"query": ', '"доставка курьер"}')
         if f == "loop":
             return _calls(("list_documents", {}))
         if f == "limit":
@@ -207,3 +211,36 @@ class CrashingStore(DocumentStore):
     def read(self, name: str) -> dict[str, Any]:
         path = self._path(name)
         raise PermissionError(13, "Permission denied", str(Path(path).resolve()))
+
+
+class FirstCallClient:
+    """Первое обращение заменено вызовом name(arguments), дальше — настоящая модель.
+
+    Для замера инъекции при условии «документ прочитан»: модель сама читает pickup.md лишь в
+    3 прогонах из 10 (injection.txt, первый прогон), и доля выполнения по трём прогонам
+    ничего не говорит. Так в контексте всегда один и тот же результат чтения, а ответ пишет
+    модель.
+    """
+
+    def __init__(
+        self, inner: AsyncToolStreamingChatClient, name: str, arguments: Mapping[str, Any]
+    ) -> None:
+        self.inner = inner
+        self.call = (name, arguments)
+        self.requests = 0
+
+    async def chat(
+        self,
+        *,
+        model: str,
+        messages: Sequence[Mapping[str, Any]],
+        tools: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+        stream: Literal[True],
+    ) -> AsyncIterator[StreamChunk]:
+        self.requests += 1
+        if self.requests == 1:
+            return _replay(_calls(self.call))
+        return await self.inner.chat(
+            model=model, messages=messages, tools=tools, options=options, stream=True
+        )
