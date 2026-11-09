@@ -121,7 +121,7 @@ def calls(*pairs: tuple[str, Mapping[str, Any]]) -> list[Chunk]:
 class FakeClient:
     """Отдаёт потоки по сценарию; запоминает, что ушло, и закрыт ли каждый поток."""
 
-    script: list[list[Chunk]]
+    script: list[list[Chunk] | Exception]
     sent: list[list[Mapping[str, Any]]] = field(default_factory=list)
     options: list[Mapping[str, Any] | None] = field(default_factory=list)
     closed: list[bool] = field(default_factory=list)
@@ -143,6 +143,8 @@ class FakeClient:
 
         async def gen() -> AsyncIterator[StreamChunk]:
             try:
+                if isinstance(chunks, Exception):
+                    raise chunks  # как ollama: ошибка HTTP — при первом чтении потока
                 for c in chunks:
                     yield c
             finally:
@@ -156,6 +158,10 @@ class Recorder:
     text: list[str] = field(default_factory=list)
     tools: list[ToolResult] = field(default_factory=list)
     lines: list[str] = field(default_factory=list)
+    notices: list[str] = field(default_factory=list)
+
+    def notice(self, text: str) -> None:
+        self.notices.append(text)
 
     def delta(self, text: str) -> None:
         self.text.append(text)
@@ -218,11 +224,15 @@ async def test_window_budget_refuses_before_sending() -> None:
 
 
 async def test_broken_stream_leaves_history_unchanged() -> None:
-    client = FakeClient([calls(("list_documents", {})), answer("Обры", reason="length")])
+    text = "В папке шесть документов: часы работы, доставка, возвраты и ещё"
+    client = FakeClient(
+        [calls(("list_documents", {})), answer(*(w + " " for w in text.split()), reason="length")]
+    )
     s, out = session(client)
     with pytest.raises(StreamIncomplete):
         await s.ask("Что есть в папке?")
-    assert "".join(out.text) == "Обры"  # пользователь видел обрывок…
+    shown = "".join(out.text)
+    assert shown and text.startswith(shown) and shown != text + " "  # видел обрывок…
     assert s.conversation.history == ()  # …а в историю не попало ничего
     assert all(client.closed)
 

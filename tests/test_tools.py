@@ -301,3 +301,30 @@ def test_results_in_wrong_order_rejected() -> None:
 def test_result_without_call_rejected() -> None:
     with pytest.raises(BrokenHistoryError, match="без вызова"):
         validate_tool_results([*USER, {"role": "tool", "tool_name": "x", "content": ""}])
+
+
+# ---------------------------------------------------------------------------
+# Вызов текстом
+# ---------------------------------------------------------------------------
+def test_raw_call_with_junk_prefix_is_detected_and_parsed() -> None:
+    from ragkit.tools import looks_like_raw_call, parse_raw_tool_calls
+
+    text = '谤 {"name": "check_status", "arguments": {"job_id": 42}} </tool_call>'
+    assert looks_like_raw_call(text)
+    assert parse_raw_tool_calls(text) == [("check_status", {"job_id": 42})]
+
+
+def test_broken_raw_call_is_detected_but_not_guessed() -> None:
+    from ragkit.tools import looks_like_raw_call, parse_raw_tool_calls
+
+    text = '<tool_call>{"name": "read_document", "argum'
+    assert looks_like_raw_call(text)
+    assert parse_raw_tool_calls(text) == []
+
+
+def test_plain_answer_is_not_a_raw_call() -> None:
+    from ragkit.tools import looks_like_raw_call, parse_raw_tool_calls
+
+    text = "Курьер — 290 рублей; JSON вида {a: 1} в ответе не вызов."
+    assert not looks_like_raw_call(text)
+    assert parse_raw_tool_calls(text) == []

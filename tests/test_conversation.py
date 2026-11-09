@@ -247,3 +247,23 @@ def test_commit_turn_rejects_unfinished_chain() -> None:
     with pytest.raises(BrokenHistoryError):
         conv.commit_turn(sent, unfinished)
     assert conv.history == ()
+
+
+# ---------------------------------------------------------------------------
+# Счёт от факта (Ф4-08)
+# ---------------------------------------------------------------------------
+def test_calibrated_count_uses_actual_prefix_and_falls_back() -> None:
+    from types import MappingProxyType
+
+    from ragkit.conversation import CalibratedCount, CharRatioEstimate
+
+    estimate = CharRatioEstimate(1.0, per_message=5, base=30)
+    count = CalibratedCount(estimate, offset=10)
+    sent = [{"role": "system", "content": "s" * 100}, {"role": "user", "content": "вопрос"}]
+    assert count(sent) == estimate(sent) and count.source == "оценка"
+    answer = {"role": "assistant", "content": "ответ"}
+    count.observe(sent, prompt_eval_count=60, eval_count=4, answer=answer)
+    later = [*(MappingProxyType(m) for m in sent), answer, {"role": "user", "content": "ещё"}]
+    assert count(later) == 60 + 4 - 10 + (5 + 3) and count.source == "факт+оценка"
+    changed = [{"role": "system", "content": "другой"}, *later[1:]]
+    assert count(changed) == estimate(changed) and count.source == "оценка"

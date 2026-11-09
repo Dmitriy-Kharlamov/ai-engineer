@@ -12,6 +12,9 @@ MAX_HITS документов и MAX_LINES строк в каждом, со сч
 
 Тексты отказов — из PublicToolError: в них только имена из своей папки, без того, что
 написала модель.
+
+quarantine=True (по умолчанию): строки, похожие на инструкцию для ИИ, до модели не доходят
+ни через read_document, ни через search_documents (docqa.guards; Ф4-08, отказ 10).
 """
 
 import re
@@ -22,6 +25,8 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from ragkit.tools import PublicToolError, ToolRegistry
+
+from .guards import quarantine as clean_text
 
 SUFFIXES = (".md", ".txt")
 MAX_HITS = 5
@@ -39,6 +44,7 @@ def stem(word: str) -> str:
 class DocumentStore:
     root: Path
     max_read_chars: int = 4000
+    quarantine: bool = True
 
     def names(self) -> list[str]:
         if not self.root.is_dir():
@@ -53,13 +59,22 @@ class DocumentStore:
             raise PublicToolError(f"такого документа нет. Доступны: {', '.join(names) or 'ничего'}")
         return self.root / name
 
-    def text(self, name: str) -> str:
+    def raw_text(self, name: str) -> str:
         return self._path(name).read_text(encoding="utf-8")
+
+    def text(self, name: str) -> str:
+        """Текст, который увидит модель: без строк-инструкций, если включён карантин."""
+        raw = self.raw_text(name)
+        return clean_text(raw)[0] if self.quarantine else raw
+
+    def quarantined(self, name: str) -> list[str]:
+        """Какие строки документа карантин не пропустил к модели (для журнала и CLI)."""
+        return clean_text(self.raw_text(name))[1] if self.quarantine else []
 
     def list(self) -> dict[str, Any]:
         out = []
         for name in self.names():
-            text = (self.root / name).read_text(encoding="utf-8")
+            text = self.text(name)
             title = next((ln.strip("# ").strip() for ln in text.splitlines() if ln.strip()), "")
             out.append({"name": name, "title": title, "chars": len(text)})
         return {"documents": out, "count": len(out)}
@@ -68,6 +83,7 @@ class DocumentStore:
         text = self.text(name)
         if len(text) <= self.max_read_chars:
             return {"name": name, "chars": len(text), "truncated": False, "text": text}
+        # длинный: дальше — по абзацам
         kept: list[str] = []
         size = 0
         for paragraph in text.split("\n\n"):  # целыми абзацами
@@ -83,7 +99,7 @@ class DocumentStore:
             raise PublicToolError("в запросе нет слов длиной от трёх букв")
         hits: list[dict[str, Any]] = []
         for name in self.names():
-            lines = (self.root / name).read_text(encoding="utf-8").splitlines()
+            lines = self.text(name).splitlines()
             found: list[dict[str, Any]] = []
             matched: set[str] = set()
             for number, line in enumerate(lines, start=1):

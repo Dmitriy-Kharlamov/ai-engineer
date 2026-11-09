@@ -34,6 +34,7 @@ message.content, message.tool_calls[i].function.name и .arguments, done_reason.
 
 import inspect
 import json
+import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from typing import Any, ClassVar, Literal, Protocol, TypeVar
@@ -100,6 +101,15 @@ class PublicToolError(Exception):
     """
 
 
+class UnparsedToolCallError(RAGError):
+    """Модель написала вызов инструмента текстом в content, и разобрать его не удалось.
+
+    Сервер ollama разбирает вызов из текста модели сам; если не разобрал (мусорный токен
+    перед тегом, оборванный JSON), вызов приходит текстом и выглядит как ответ (Ф4-06,
+    задание 6: 2 из 10 прогонов). Такой «ответ» нельзя ни показать, ни записать в историю.
+    """
+
+
 class IterationLimitError(RAGError):
     """Модель всё ещё просит инструменты после max_iterations обращений."""
 
@@ -162,6 +172,7 @@ class ToolResult:
     content: str
     arguments: Mapping[str, Any] | None = None  # проверенные аргументы, если дошло до них
     requested_arguments: Mapping[str, Any] | None = None  # как прислала модель: недоверенные
+    detail: str = ""  # для журнала: исходная ошибка целиком; модели не уходит (Ф4-08)
 
     @property
     def ok(self) -> bool:
@@ -257,7 +268,11 @@ class ToolRegistry:
                 f"{'.'.join(map(str, e['loc'])) or '<корень>'}: {e['msg']}" for e in error.errors
             )
             return ToolResult(
-                "invalid", name, tool_name, f"ошибка: аргументы не прошли проверку — {where}"
+                "invalid",
+                name,
+                tool_name,
+                f"ошибка: аргументы не прошли проверку — {where}",
+                detail=str(error),
             )
         except ToolFailedError as error:
             public = isinstance(error.original, PublicToolError)
@@ -267,7 +282,10 @@ class ToolRegistry:
                 else "ошибка: инструмент не смог выполнить запрос. Повтор с теми же "
                 "аргументами не поможет."
             )
-            return ToolResult("failed", name, tool_name, content)
+            original = error.original
+            return ToolResult(
+                "failed", name, tool_name, content, detail=f"{type(original).__name__}: {original}"
+            )
         content = (
             _render({"аргументы": checked, "результат": result})
             if self.echo_arguments
@@ -502,3 +520,40 @@ def run_tools(
         steps=steps,
         messages=history,
     )
+
+
+# ---------------------------------------------------------------------------
+# Вызов, написанный текстом (Ф4-06, задание 6; Ф4-08, отказ 4)
+# ---------------------------------------------------------------------------
+RAW_CALL = re.compile(r"</?tool_call>|\{\s*\"name\"\s*:", re.IGNORECASE)
+
+
+def looks_like_raw_call(text: str) -> bool:
+    """Похоже ли начало или весь текст ответа на вызов инструмента, а не на ответ человеку."""
+    return bool(RAW_CALL.search(text))
+
+
+def parse_raw_tool_calls(text: str) -> list[tuple[str, dict[str, Any]]]:
+    """Вызовы {"name": ..., "arguments": {...}} из текста; [] — если ни одного целого.
+
+    Разбираются только целые JSON-объекты с строковым name и словарём arguments: обрывок
+    не угадывается. Выполнять разобранное или нет — решает цикл; аргументы всё равно
+    пройдут модель pydantic в диспетчере.
+    """
+    decoder = json.JSONDecoder()
+    calls: list[tuple[str, dict[str, Any]]] = []
+    position = 0
+    while (start := text.find("{", position)) != -1:
+        try:
+            value, end = decoder.raw_decode(text, start)
+        except json.JSONDecodeError:
+            position = start + 1
+            continue
+        position = end
+        if (
+            isinstance(value, dict)
+            and isinstance(value.get("name"), str)
+            and isinstance(value.get("arguments", {}), dict)
+        ):
+            calls.append((value["name"], dict(value.get("arguments", {}))))
+    return calls

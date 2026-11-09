@@ -138,6 +138,18 @@ class CostGuard:
             raise CostLimitExceededError(estimate, self.limit, self.price)
         return estimate
 
+    def check_tokens(self, input_tokens: int, *, max_output_tokens: int) -> CostEstimate:
+        """Проверка по уже известному числу токенов входа — например, по факту прошлого
+        обращения плюс оценке дописанного (Ф4-08). Порог тот же, отказ тот же."""
+        if max_output_tokens <= 0:
+            raise ValueError("нужна верхняя граница выхода: max_output_tokens > 0")
+        estimate = CostEstimate(
+            input_tokens, max_output_tokens, self.price.cost(input_tokens, max_output_tokens)
+        )
+        if estimate.cost > self.limit:
+            raise CostLimitExceededError(estimate, self.limit, self.price)
+        return estimate
+
     def chat(
         self,
         client: ChatClient,

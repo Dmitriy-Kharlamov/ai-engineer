@@ -22,3 +22,6 @@ build/
 .coverage
 .coverage.*
 htmlcov/
+
+# Ф4-08: копии папки с инъекцией пересоздаются скриптами
+/week-04/checkpoint/out/attack_*/

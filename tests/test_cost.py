@@ -149,3 +149,10 @@ def test_conservative_ratio_validates_input() -> None:
         conservative_ratio([])
     with pytest.raises(ValueError):
         conservative_ratio([(10, 5)], margin=1.5)
+
+
+def test_check_tokens_uses_known_count() -> None:
+    guard = CostGuard(PRICE, limit=0.01, count_tokens=safe_estimator())
+    assert guard.check_tokens(1000, max_output_tokens=100).cost == pytest.approx(0.003)
+    with pytest.raises(CostLimitExceededError):
+        guard.check_tokens(5000, max_output_tokens=100)

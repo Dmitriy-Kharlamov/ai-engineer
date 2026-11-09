@@ -169,6 +169,64 @@ class CharRatioEstimate:
         )
 
 
+def _plain(value: Any) -> Any:
+    """Сообщение без обёрток (MappingProxyType, кортежи) — для сравнения по содержимому."""
+    if isinstance(value, Mapping):
+        return {str(k): _plain(v) for k, v in value.items()}
+    if isinstance(value, list | tuple):
+        return [_plain(v) for v in value]
+    return value
+
+
+class CalibratedCount:
+    """Токены = факт сервера за уже отправленный префикс + оценка дописанного (Ф4-08).
+
+    Чистая оценка (CharRatioEstimate с худшим курсом) — верхняя граница, и на русском с
+    JSON она завышала вход на +102…157 %: окно и порог цены «кончались» вдвое раньше. Но
+    prompt_eval_count прошлого обращения — точное число для тех же сообщений, а следующее
+    обращение в цикле инструментов — это те же сообщения плюс вызов и результаты. Оценивать
+    надо только их.
+
+    observe() запоминает факт; __call__ сверяет начало новых сообщений с запомненными по
+    содержимому. Совпало — факт + оценка остатка; нет (история обрезана, тексты результатов
+    заменены пометками) — чистая оценка. Из двух берётся меньшее: обе — верхние границы.
+    offset — сколько токенов вычесть из факта, потому что их считают отдельно (схемы
+    инструментов: сервер считает их в prompt_eval_count, а бюджет окна — без них).
+    """
+
+    def __init__(self, estimate: CharRatioEstimate, offset: int = 0) -> None:
+        self.estimate = estimate
+        self.offset = offset
+        self._known: list[Any] = []
+        self._count = 0
+        self.source = "оценка"  # чем посчитан последний вызов: «оценка» или «факт+оценка»
+
+    def observe(
+        self, messages: Sequence[Message], prompt_eval_count: int, eval_count: int = 0,
+        answer: Message | None = None,
+    ) -> None:  # fmt: skip
+        """Факт обращения: на messages сервер насчитал prompt_eval_count. answer — ответ
+        модели (eval_count токенов), если он станет частью следующего обращения."""
+        known = [_plain(m) for m in messages]
+        count = prompt_eval_count
+        if answer is not None:
+            known.append(_plain(answer))
+            count += eval_count
+        self._known, self._count = known, count
+
+    def __call__(self, messages: Sequence[Message]) -> int:
+        full = self.estimate(messages)
+        n = len(self._known)
+        if n and len(messages) >= n and [_plain(m) for m in messages[:n]] == self._known:
+            rest = messages[n:]
+            calibrated = self._count - self.offset + self.estimate(rest) - self.estimate.base
+            if calibrated < full:
+                self.source = "факт+оценка"
+                return calibrated
+        self.source = "оценка"
+        return full
+
+
 # ---------------------------------------------------------------------------
 # Диалог
 # ---------------------------------------------------------------------------
