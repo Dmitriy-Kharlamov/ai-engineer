@@ -1,0 +1,19 @@
+коммит e40c773c8199
+ollama 0.40.14; модель qwen2.5:7b, digest 845dbda0ea48
+   qwen2, 7.6B, Q4_K_M, gguf
+
+5. Где очередь кончается: OLLAMA_MAX_QUEUE=4, OLLAMA_NUM_PARALLEL=1 (подписи запуска); 12 одновременных запросов
+   прогноз (до запуска): по умолчанию OLLAMA_MAX_QUEUE = 512 (FAQ ollama). При MAX_QUEUE=4 и загруженной модели 12 одновременных запросов 503 не дадут: MAX_QUEUE — очередь планировщика до выдачи модели, а дальше запросы ждут слот внутри runner'а; при выгруженной модели запросы копятся в очереди планировщика, пока модель грузится, и лишние получат 503 «server busy, please try again.  maximum pending requests exceeded» за миллисекунды; Retry-After не будет; should_retry(503, 'POST') = True — и это верно: запрос не начинал выполняться
+   по умолчанию OLLAMA_MAX_QUEUE = 512 — FAQ ollama, docs.ollama.com/faq
+   [модель загружена] коды: {200: 12}
+      200: 12 шт., время ответа 1.891–21.998 с; Retry-After: None
+   [модель выгружена (keep_alive=0), грузится] коды: {200: 5, 503: 7}
+      200: 5 шт., время ответа 2.513–9.922 с; Retry-After: None
+      503: 7 шт., время ответа 0.043–0.046 с; Retry-After: None; тело: '{"error":"server busy, please try again.  maximum pending requests exceeded"}'
+   классификация services/http_retry.py:
+      should_retry(503, 'POST') = True
+      should_retry(429, 'POST') = True
+      should_retry(500, 'POST') = True
+      RETRY_STATUSES = [408, 425, 429, 500, 502, 503, 504]; метод для кода не смотрится
+      без Retry-After пауза по формуле: после 1-й попытки 0.5 с + джиттер
+   [задание 5: 37.7 с]
