@@ -95,16 +95,18 @@ class _Chunk:
     load_duration: int | None = None
 
 
-def _final(prompt: int, output: int) -> _Chunk:
-    return _Chunk(_Msg(""), True, "stop", prompt, 1_000_000, output, 1_000_000, 2_000_000, 0)
+def _final(prompt: int = 0, output: int = 0) -> _Chunk:
+    """Последний кусок подставленного ответа. Счётчики — 0: сервер ничего не считал, и
+    подставлять сюда правдоподобные числа нельзя — сессия считает от них вход и деньги."""
+    return _Chunk(_Msg(""), True, "stop", prompt, 0, output, 0, 0, 0)
 
 
 def _calls(*pairs: tuple[str, Mapping[str, Any]]) -> list[StreamChunk]:
-    return [_Chunk(_Msg("", [_Call(_Fn(n, a)) for n, a in pairs])), _final(400, 30)]
+    return [_Chunk(_Msg("", [_Call(_Fn(n, a)) for n, a in pairs])), _final()]
 
 
 def _text(*parts: str) -> list[StreamChunk]:
-    return [*(_Chunk(_Msg(p)) for p in parts), _final(400, 30)]
+    return [*(_Chunk(_Msg(p)) for p in parts), _final()]
 
 
 async def _replay(chunks: Sequence[StreamChunk]) -> AsyncIterator[StreamChunk]:

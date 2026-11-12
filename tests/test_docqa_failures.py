@@ -466,3 +466,15 @@ async def test_no_fallback_after_read_crashed(tmp_path: Path) -> None:
     s, out, _ = make(client, CrashingStore(tmp_path))
     report = await s.ask("Доставка курьером?")
     assert not report.fell_back and "".join(out.text) == "Не смог прочитать."
+
+
+async def test_scripted_responses_do_not_fake_the_fact() -> None:
+    """07b, прогон 3: подставленный ответ с prompt_eval_count=400 сделал «фактом» выдумку,
+    и обращение, не влезавшее в окно, ушло. Подставленные счётчики — 0, и они пропускаются."""
+    inner = FakeClient([answer("Всё прочитано.")])
+    names = DocumentStore(SAMPLE).names()
+    client = FaultyClient(inner, "read-all-turns", names)
+    s, _, _ = make(client, num_ctx=3072)  # type: ignore[arg-type]
+    with pytest.raises(BudgetExceededError, match="обращение 2"):
+        await s.ask("Расскажи всё")
+    assert inner.sent == [] and s.spent_usd == 0.0  # ничего не ушло и ничего не стоило

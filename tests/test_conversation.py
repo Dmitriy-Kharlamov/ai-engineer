@@ -267,3 +267,16 @@ def test_calibrated_count_uses_actual_prefix_and_falls_back() -> None:
     assert count(later) == 60 + 4 - 10 + (5 + 3) and count.source == "факт+оценка"
     changed = [{"role": "system", "content": "другой"}, *later[1:]]
     assert count(changed) == estimate(changed) and count.source == "оценка"
+
+
+def test_calibrated_count_skips_observations_without_fact() -> None:
+    from ragkit.conversation import CalibratedCount, CharRatioEstimate
+
+    estimate = CharRatioEstimate(1.0, per_message=5, base=30)
+    count = CalibratedCount(estimate)
+    first = [{"role": "user", "content": "вопрос"}]
+    count.observe(first, prompt_eval_count=40)
+    scripted = [*first, {"role": "assistant", "content": ""}]
+    count.observe(scripted, prompt_eval_count=0)  # подставленный ответ: факта нет
+    later = [*scripted, {"role": "tool", "content": "x" * 50}]
+    assert count(later) == 40 + estimate(later[1:]) - 30 and count.source == "факт+оценка"

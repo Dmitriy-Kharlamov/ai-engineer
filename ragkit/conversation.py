@@ -206,7 +206,14 @@ class CalibratedCount:
         answer: Message | None = None,
     ) -> None:  # fmt: skip
         """Факт обращения: на messages сервер насчитал prompt_eval_count. answer — ответ
-        модели (eval_count токенов), если он станет частью следующего обращения."""
+        модели (eval_count токенов), если он станет частью следующего обращения.
+
+        prompt_eval_count <= 0 — факта нет (ответ подставлен, а не посчитан сервером): такое
+        наблюдение пропускается, и остаётся прошлое — оно по-прежнему префикс. Иначе выдуманное
+        число стало бы «фактом»: так прятался 07b в прогоне 3 (Ф4-08).
+        """
+        if prompt_eval_count <= 0:
+            return
         known = [_plain(m) for m in messages]
         count = prompt_eval_count
         if answer is not None:
