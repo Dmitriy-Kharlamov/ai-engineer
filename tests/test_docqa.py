@@ -174,7 +174,9 @@ class Recorder:
 
 
 def session(client: FakeClient, **settings: Any) -> tuple[Session, Recorder]:
+    """Сессия для тестов присеста 1: подстраховка выключена — её тесты в test_docqa_failures."""
     out = Recorder()
+    settings.setdefault("fallback", False)
     return Session(DocumentStore(SAMPLE), client, out, Settings(**settings)), out
 
 

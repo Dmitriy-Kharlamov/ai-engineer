@@ -35,6 +35,7 @@ FAULTS: dict[str, str] = {
     "loop": "каждое обращение: list_documents() — один и тот же вызов",
     "limit": "каждое обращение: search_documents с новым запросом — без повторов",
     "read-all": "1-е обращение: read_document для каждого документа сразу",
+    "read-all-turns": "1-е обращение каждого хода: read_document для каждого документа",
     "no-tools": "1-е обращение: ответ без единого вызова, из головы",
     "stream-cut": "поток с текстом обрывается после 6 кусков, без последнего куска",
     "stream-stall": "поток с текстом замолкает после 6 кусков",
@@ -52,6 +53,7 @@ Fault = Literal[
     "loop",
     "limit",
     "read-all",
+    "read-all-turns",
     "no-tools",
     "stream-cut",
     "stream-stall",
@@ -134,8 +136,12 @@ class FaultyClient:
         self.requests = 0
         self.cut_done = False
 
-    def _scripted(self, n: int) -> list[StreamChunk] | Exception | None:
+    def _scripted(
+        self, n: int, messages: Sequence[Mapping[str, Any]]
+    ) -> list[StreamChunk] | Exception | None:
         f = self.fault
+        if f == "read-all-turns" and messages and messages[-1].get("role") == "user":
+            return _calls(*(("read_document", {"name": d}) for d in self.documents))
         if f == "unknown-tool" and n == 1:
             return _calls(("send_email", {"to": "client@example.com", "text": "Доставка 290 ₽"}))
         if f == "bad-args" and n == 1:
@@ -175,7 +181,7 @@ class FaultyClient:
         stream: Literal[True],
     ) -> AsyncIterator[StreamChunk]:
         self.requests += 1
-        scripted = self._scripted(self.requests)
+        scripted = self._scripted(self.requests, messages)
         if isinstance(scripted, Exception):
             return _Failing(scripted)
         if scripted is not None:

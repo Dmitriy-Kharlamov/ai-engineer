@@ -36,10 +36,11 @@
 * бюджет сессии — сумма фактической цены плюс оценка следующего обращения;
 * инструкция в документе (отказ 10): карантин строк до модели и вырезание чужих адресов
   на выходе — docqa.guards; что сработало, код говорит пользователю строкой notice.
-* подталкивание (по прогону 1 failures.txt и injection.txt): пока в ходе не прочитан ни
-  один документ, ответ придерживается; если ни один вызов не удался или ответ — обещание
-  («Давайте посмотрим…»), он не показывается, а модель получает одно сообщение кода.
-  В историю не идут ни придержанный ответ, ни сообщение кода.
+* подстраховка (по прогонам 1–2): пока в ходе не прочитан ни один документ, ответ
+  придерживается; если ход так и кончился, ответ не показывается, а код сам ищет по
+  вопросу и читает первый найденный документ — и модель отвечает ещё раз. Просьба к модели
+  «прочитай» (прогон 2) сработала в 3 из 20 случаев и дала 9 пустых ответов;
+* пустой ответ — EmptyAnswerError, а не пустая строка «модель>».
 
 Что видит пользователь при каждом отказе — решает CLI, а не модель.
 """
@@ -47,7 +48,6 @@
 import asyncio
 import json
 import random
-import re
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -109,24 +109,15 @@ DOCQA_PROMPT_WARN = Prompt(
     user_template="{question}",
 )
 PROMPTS: dict[str, Prompt] = {"base": DOCQA_PROMPT, "warn": DOCQA_PROMPT_WARN}
-# Подталкивание: ход кончился ответом, а ни один документ не прочитан. В прогоне
-# failures.txt так кончились 01–03 («в документах нет информации» без чтения), 10a/10b
-# («Давайте посмотрим документ…» — и всё), а в injection.txt — 7 из 10 прогонов на клетку.
-# Этот ответ не показывается; модель получает одно сообщение кода и ещё одно обращение.
-# Подталкивание — только если ни один вызов в ходе не удался (01, 02, 12) или ответ —
-# обещание действия («Давайте посмотрим документ…»). Ответ после list_documents или поиска
-# без чтения бывает законным («что есть в папке?»): его код показывает с пометкой.
-INTENTION = re.compile(
-    r"^\W*(давайте|сейчас\b|посмотрим|проверим|я\s+(сейчас\s+)?(посмотрю|проверю|прочитаю|"
-    r"поищу|найду|открою)|let me|i will|i'll)",
-    re.IGNORECASE,
-)
-NUDGE = (
-    "[Сообщение программы, не пользователя.] В этом ходе ты не прочитал ни одного документа, "
-    "поэтому твой ответ пользователю не показан. Найди нужный документ (search_documents или "
-    "list_documents), прочитай его (read_document) и ответь по нему. Если документа по "
-    "вопросу в папке нет — так и скажи."
-)
+# Подстраховка: ход кончился ответом, а ни один документ не прочитан — код сам ищет по
+# вопросу и читает первый найденный документ, модель пишет ответ ещё раз.
+# Почему так, а не просьбой к модели (прогон 2, failures2.txt и injection_natural.txt):
+# сообщение «прочитай документ» сработало в 3 из 20 подталкиваний, а в 9 из 20 модель
+# вернула пустой ответ. Когда же документ в контексте, модель отвечает по нему: в
+# injection_forced.txt — 60 из 60, первое обращение там тоже сделано кодом.
+# Ответ без чтения не показывается: в прогонах 1–2 такие ответы были ложью
+# («delivery.md не содержит информации» о документе, который не читался).
+FALLBACK_QUERY_CHARS = 200  # SearchArgs.query — не длиннее 200 символов
 
 # Цена — модель на прайсе Anthropic (Ф4-07): локальная модель бесплатна, но предохранитель
 # проверяется на тех числах, которые были бы у платного API.
@@ -165,7 +156,7 @@ class Settings:
     quarantine: bool = True  # строки-инструкции из документов не доходят до модели
     redact_addresses: bool = True  # чужие адреса не доходят до пользователя
     allowed_domains: tuple[str, ...] = ()
-    nudge: bool = True  # ответ без чтения не показывать, а один раз подтолкнуть модель
+    fallback: bool = True  # ответ без чтения не показывать: код сам ищет и читает
     retry: RetryPolicy = field(default_factory=lambda: RETRY)
 
     @property
@@ -221,6 +212,11 @@ class SessionBudgetError(RAGError):
         self.limit = limit
 
 
+class EmptyAnswerError(RAGError):
+    """Модель закончила ход пустым ответом: ни текста, ни вызовов. В прогоне 2 так кончились
+    9 из 20 ходов после просьбы «прочитай документ» (injection_natural.txt, 10a, 10b)."""
+
+
 class RepeatLoopError(IterationLimitError):
     """Модель несколько обращений подряд просит только то, что уже выполнено."""
 
@@ -268,7 +264,8 @@ class TurnReport:
         return names
 
     @property
-    def nudged(self) -> bool:
+    def fell_back(self) -> bool:
+        """Сработала ли подстраховка: код сам искал и читал."""
         return self.hidden_answer is not None
 
     @property
@@ -364,7 +361,11 @@ class Session:
             f"{s.max_iterations}; 429/503 — до {s.retry.attempts} попыток",
             "защиты: " + "; ".join(defenses),
             "ответ без чтения документов: "
-            + ("придержать и один раз подтолкнуть модель" if s.nudge else "показывать сразу"),
+            + (
+                "не показывать; код сам ищет по вопросу и читает найденное"
+                if s.fallback
+                else "показывать сразу"
+            ),
         ]
 
     # -- одно обращение ----------------------------------------------------------------
@@ -494,7 +495,7 @@ class Session:
                 f"{estimate.cost:.5f} $ (порог {s.limit_usd})"
             )
             # пока в ходе ничего не прочитано, ответ придерживается: вдруг он без чтения
-            live = not s.nudge or report.nudged or bool(report.documents_read)
+            live = not s.fallback or report.fell_back or bool(report.documents_read)
             got = await self._request(messages, turn, number, live=live)
             stream, answer_filter = got.stream, got.filter
             envelope = stream.envelope
@@ -562,24 +563,21 @@ class Session:
                 f"decode {iteration.eval_ms:.0f} мс, done_reason={envelope.done_reason!r}, "
                 f"вызовов {len(calls)}"
             )
-            if (
-                not calls
-                and not answer_filter.live  # придержан: в ходе ещё ничего не прочитано
-                and (not any(r.ok for r in report.calls) or INTENTION.match(answer_filter.raw))
-            ):
-                held = {"role": "assistant", "content": answer_filter.shown}
+            # чтение уже падало (03): подстраховка упрётся в то же падение — без неё
+            crashed = any(
+                r.tool_name == "read_document" and r.kind == "failed" for r in report.calls
+            )
+            if not calls and not answer_filter.live and not crashed:  # ничего не прочитано
                 report.hidden_answer = answer_filter.shown
                 self.events.emit(
-                    "nudge", turn=turn, request=number, hidden_answer=clip(answer_filter.raw)
+                    "fallback", turn=turn, request=number, hidden_answer=clip(answer_filter.raw)
                 )
                 self.out.notice(
-                    "модель ответила, не прочитав ни одного документа; этот ответ не показан "
-                    "— код просит её найти и прочитать документ"
+                    "модель ответила, не прочитав ни одного документа; этот ответ не показан — "
+                    "код сам ищет по вопросу и читает найденное"
                 )
-                produced += [held, {"role": "user", "content": NUDGE}]
-                self.counter.observe(
-                    messages, envelope.prompt_eval_count, envelope.eval_count, held
-                )
+                self.counter.observe(messages, envelope.prompt_eval_count)
+                self._fallback(turn, number, question, loop, produced, report)
                 continue
             if not calls:
                 answer_filter.release()  # придержанный ответ после поиска — показать целиком
@@ -624,6 +622,49 @@ class Session:
             messages=[*sent, *produced],
         )
 
+    def _fallback(
+        self,
+        turn: int,
+        number: int,
+        question: str,
+        loop: ToolLoop,
+        produced: list[dict[str, Any]],
+        report: TurnReport,
+    ) -> None:
+        """Поиск по вопросу и чтение первого найденного — через тот же реестр и журнал.
+
+        В историю вызовы идут как обычные: так модель видит, откуда взялся текст, а следующий
+        ход получает пример с вызовами, а не ответ без них (история — пример, Ф4-06).
+        """
+        query = " ".join(question.split())[:FALLBACK_QUERY_CHARS]
+        hits = [h["name"] for h in self.store.search(query)["results"]]
+        steps: list[tuple[str, dict[str, Any]]] = [("search_documents", {"query": query})]
+        if hits:
+            steps.append(("read_document", {"name": hits[0]}))
+        done: list[ToolResult] = []
+        for name, arguments in steps:
+            results = loop.handle(number, [(name, arguments)])
+            produced.append(assistant_message("", [(name, arguments)]))
+            for result in results:
+                self.out.tool(result)
+                self.events.emit(
+                    "tool",
+                    turn=turn,
+                    request=number,
+                    requested=result.requested,
+                    arguments=result.requested_arguments,
+                    kind=result.kind,
+                    content_chars=len(result.content),
+                    detail=result.detail or None,
+                    by="код",
+                )
+                produced.append(result.message())
+                self._note_quarantine(turn, result, report)
+            done.extend(results)
+        report.iterations.append(
+            Iteration(turn, number, 0, 0, "код", 0.0, 0, 0, 0.0, 0.0, tuple(done))
+        )
+
     def _note_quarantine(self, turn: int, result: ToolResult, report: TurnReport) -> None:
         name = str((result.arguments or {}).get("name", ""))
         if not (result.ok and result.tool_name == "read_document") or name in report.quarantined:
@@ -647,6 +688,11 @@ class Session:
     ) -> TurnReport:
         report.answer = answer_filter.shown
         report.raw_answer = answer_filter.raw
+        if not report.answer.strip():
+            raise EmptyAnswerError(
+                f"ход {turn}: модель закончила ход без текста и без вызовов "
+                f"(прочитано: {', '.join(report.documents_read) or 'ничего'})"
+            )
         report.removed_addresses = list(answer_filter.removed)
         if report.removed_addresses:
             self.events.emit("redacted", turn=turn, addresses=report.removed_addresses)
@@ -656,14 +702,9 @@ class Session:
             )
         produced.append({"role": "assistant", "content": report.answer})
         validate_tool_results([*sent, *produced])
-        # подталкивание и придержанный ответ в историю не идут: это не реплики диалога
-        kept = [m for m in produced if m.get("content") != NUDGE]
-        if report.hidden_answer is not None:
-            index = next(i for i, m in enumerate(produced) if m.get("content") == NUDGE) - 1
-            kept = [m for i, m in enumerate(produced) if i not in (index, index + 1)]
         self.conversation.commit_turn(
             sent,
-            for_history(kept, self.settings.history_mode),
+            for_history(produced, self.settings.history_mode),
             prompt_eval_count=report.prompt_tokens,
             prompt_eval_ms=sum(i.prompt_ms for i in report.iterations),
             eval_count=report.output_tokens,

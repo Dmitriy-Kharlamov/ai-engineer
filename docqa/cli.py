@@ -39,6 +39,7 @@ from .documents import DocumentStore
 from .events import EventLog
 from .faults import FAULTS, CrashingStore, Fault, FaultyClient
 from .session import (
+    EmptyAnswerError,
     RepeatLoopError,
     ServerBusyError,
     Session,
@@ -134,6 +135,8 @@ def failure(error: BaseException, shown: bool) -> str:
         return f"модель зациклилась на одном вызове: {error}"
     if isinstance(error, IterationLimitError):
         return f"модель не закончила за отведённое число обращений: {error}"
+    if isinstance(error, EmptyAnswerError):
+        return f"модель вернула пустой ответ; в историю ничего не записано ({error})"
     if isinstance(error, UnparsedToolCallError):
         return (
             "модель вернула вызов инструмента текстом, и код не смог его разобрать; "
@@ -249,9 +252,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--events", type=Path, help="журнал событий, JSON по строке")
     parser.add_argument(
-        "--no-nudge",
+        "--no-fallback",
         action="store_true",
-        help="показывать ответ без чтения документов сразу, не подталкивая модель",
+        help="показывать ответ без чтения документов сразу; код сам не ищет и не читает",
     )
     parser.add_argument("-q", "--question", action="append", help="вопрос; можно несколько")
     parser.add_argument("--debug", action="store_true", help="версия промпта, бюджет, токены")
@@ -278,7 +281,7 @@ def main(argv: list[str] | None = None) -> int:
         quarantine=not args.unsafe,
         redact_addresses=not args.unsafe,
         allowed_domains=tuple(args.allow_domain),
-        nudge=not args.no_nudge,
+        fallback=not args.no_fallback,
     )
     if args.log:
         args.log.parent.mkdir(parents=True, exist_ok=True)
