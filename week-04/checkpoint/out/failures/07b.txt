@@ -1,0 +1,19 @@
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ read-all-turns: 1-е обращение каждого хода: read_document для каждого документа
+
+вы> Расскажи коротко, что есть в документах
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение 2: вход 3911 токенов (оценка) при окне 3584 (num_ctx 4096 − num_predict 512); сообщений 9. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+
+вы> А что из этого про доставку?
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение 2: вход 3904 токенов (оценка) при окне 3584 (num_ctx 4096 − num_predict 512); сообщений 9. Можно /reset (забыть историю), вопрос уже или больший --num-ctx

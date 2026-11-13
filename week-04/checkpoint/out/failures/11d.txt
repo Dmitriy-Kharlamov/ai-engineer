@@ -1,0 +1,4 @@
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1
+
+вы> Сколько стоит доставка курьером?
+[ответа нет] нет связи с сервером модели (ConnectError: All connection attempts failed). Запущен ли ollama (ollama serve) и верен ли --host?
