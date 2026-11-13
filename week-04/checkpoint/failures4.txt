@@ -1,0 +1,51 @@
+коммит ddbc08806234 + незакоммиченные правки; python -m docqa, модель по умолчанию; каждый сценарий — подпроцесс
+   прогнозы и результаты прогонов — в шапке скрипта
+
+====================================================================================================
+[07b] переполнение окна посреди сессии
+$ python -m docqa --fault read-all-turns --history full --num-ctx 4096 -q 'Расскажи коротко, что есть в документах' -q 'А что из этого про доставку?' --log week-04/checkpoint/out/failures/07b.txt --events week-04/checkpoint/out/failures/07b.events.jsonl
+код возврата 1, 20 с
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ read-all-turns: 1-е обращение каждого хода: read_document для каждого документа
+
+вы> Расскажи коротко, что есть в документах
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+модель> В папке есть следующие документы:
+
+- **delivery.md**: информация о доставке товаров.
+- **events.md**: описание встреч и книжного клуба.
+- **gift_cards.md**: правила использования подарочных сертификатов.
+- **hours.md**: часы работы и адреса магазинов.
+- **loyalty.md**: условия программы лояльности «Друг Полки».
+- **returns.md**: правила возврата и обмена товаров.
+  [прочитано в этом ходе: delivery.md, events.md, gift_cards.md, hours.md, loyalty.md, returns.md]
+
+вы> А что из этого про доставку?
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 2, обращение 2: вход 4369 токенов (факт+оценка) при окне 3584 (num_ctx 4096 − num_predict 512); сообщений 18. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+--- журнал событий ---
+   по типам: session×1, turn_start×2, request×3, response×3, tool×12, turn_end×1, turn_failed×1
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "events.md"}, "kind": "ok", "content_chars": 500, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "gift_cards.md"}, "kind": "ok", "content_chars": 511, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "hours.md"}, "kind": "ok", "content_chars": 542, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "loyalty.md"}, "kind": "ok", "content_chars": 593, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   turn_end: {"turn": 1, "answer_chars": 365, "answer": "В папке есть следующие документы:\n\n- **delivery.md**: информация о доставке товаров.\n- **events.md**: описание встреч и книжного клуба.\n- **gift_cards.md**: правила использования подарочных сертификат…(+165)", "documents_read": ["delivery.md", "events.md", "gift_cards.md", "hours.md", "loyalty.md", "returns.md"], "not_done": [], "removed_addresses": 
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "events.md"}, "kind": "ok", "content_chars": 500, "detail": null}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "gift_cards.md"}, "kind": "ok", "content_chars": 511, "detail": null}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "hours.md"}, "kind": "ok", "content_chars": 542, "detail": null}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "loyalty.md"}, "kind": "ok", "content_chars": 593, "detail": null}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   turn_failed: {"turn": 2, "error": "BudgetExceededError", "message": "ход 2, обращение 2: вход 4369 токенов (факт+оценка) при окне 3584 (num_ctx 4096 − num_predict 512); сообщений 18", "history_messages": 9, "spent_usd": 0.004874}
