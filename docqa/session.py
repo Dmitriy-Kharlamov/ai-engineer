@@ -382,6 +382,7 @@ class Session:
         self.counter = CalibratedCount(ESTIMATOR, offset=self.tools_tokens)
         self.conversation = self._new_conversation()
         self.turns: list[TurnReport] = []
+        self.asked = 0  # сколько вопросов задано, включая неудачные ходы
         self.spent_usd = 0.0  # по фактическим счётчикам, всех обращений, и неудачных ходов
 
     def _new_conversation(self) -> Conversation:
@@ -493,7 +494,10 @@ class Session:
 
     # -- ход ---------------------------------------------------------------------------
     async def ask(self, question: str) -> TurnReport:
-        turn = len(self.turns) + 1
+        self.asked += 1
+        turn = (
+            self.asked
+        )  # номер вопроса, и неудачные ходы считаются (failures6.txt: «ход 1» дважды)
         self.events.emit("turn_start", turn=turn, question=clip(question))
         try:
             report = await self._ask(turn, question)
@@ -626,6 +630,10 @@ class Session:
             if not calls and s.structured:
                 report.draft = answer_filter.raw
                 self.events.emit("draft", turn=turn, request=number, text=clip(answer_filter.raw))
+                # итог = эти же сообщения плюс сообщение кода: префикс посчитан сервером.
+                # Без этого итог считался чистой оценкой, и 07b падал на нём уже в ходе 1
+                # (failures6.txt: 4142 «оценка» при окне 3840).
+                self.counter.observe(messages, envelope.prompt_eval_count)
                 return await self._final(turn, number, sent, produced, report, messages, envelope)
             if not calls:
                 answer_filter.release()  # придержанный ответ после поиска — показать целиком

@@ -226,7 +226,7 @@ async def run(questions: list[str] | None, session: Session, term: Terminal) -> 
             sources = report.sources
             if sources:
                 line = f"источники: {', '.join(sources)}"
-            elif report.structured.not_found:
+            elif report.structured.not_found and not report.notes_saved:
                 line = "источников нет — модель не нашла ответа в прочитанном"
             else:
                 line = "источников нет"

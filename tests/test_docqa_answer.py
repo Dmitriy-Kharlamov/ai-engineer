@@ -259,3 +259,27 @@ async def test_saved_note_file_as_source_is_not_an_error(tmp_path: Path) -> None
     s, _ = make(client, confirm=lambda r: True, notes_dir=tmp_path)
     report = await s.ask("Сохрани заметку про доставку")
     assert report.issues == [] and report.notes_saved == ["Доставка"]
+
+
+# ---------------------------------------------------------------------------
+# По прогону 6 (failures6.txt)
+# ---------------------------------------------------------------------------
+async def test_final_request_is_counted_from_actual_prefix() -> None:
+    """07b: итог считался чистой оценкой и не влезал в окно, хотя префикс посчитан сервером."""
+    client = FakeClient([READ_DELIVERY, answer("…")], finals=[final("290 ₽.", ["delivery.md"])])
+    s, out = make(client)
+    await s.ask("Курьер?")
+    final_line = next(line for line in out.lines if "обращение итог" in line)
+    assert "факт+оценка" in final_line
+
+
+async def test_failed_turn_still_counts_in_turn_numbers() -> None:
+    client = FakeClient(
+        [READ_DELIVERY, answer("…")],
+        finals=[TruncatedOutputError("length", raw="{"), final("290 ₽.", ["delivery.md"])],
+    )
+    s, _ = make(client)
+    with pytest.raises(TruncatedOutputError):
+        await s.ask("Первый")
+    report = await s.ask("Второй")
+    assert report.iterations[0].turn == 2
