@@ -47,14 +47,21 @@ class DocAnswer(BaseModel):
     )
 
 
-def instruction(read: Sequence[str], failed: Sequence[str], saved: Sequence[str]) -> str:
+def instruction(
+    read: Sequence[str],
+    failed: Sequence[str],
+    saved: Sequence[str],
+    *,
+    declined: Sequence[str] = (),
+) -> str:
     """Сообщение кода для последнего обращения: схема словами и факты из журнала хода."""
     lines = [
         "[Сообщение программы, не пользователя.] Дай итоговый ответ объектом JSON с полями:",
         "- answer — ответ пользователю по-русски, коротко, только по тому, что написано в "
         "прочитанных документах;",
-        "- sources — имена файлов документов, на которых основан ответ, ровно как в "
-        "read_document (например delivery.md); пустой список, если опереться не на что;",
+        "- sources — имена файлов документов из папки, на которых основан ответ, ровно как в "
+        "read_document (например delivery.md); заметки — не источники; пустой список, если "
+        "опереться не на что;",
         "- not_found — true, если в прочитанных документах ответа нет; тогда так и скажи в answer.",
         "Прочитаны в этом ходе: " + (", ".join(read) if read else "ни одного документа") + ".",
     ]
@@ -66,6 +73,12 @@ def instruction(read: Sequence[str], failed: Sequence[str], saved: Sequence[str]
         )
     if saved:
         lines.append("Сохранены заметки: " + ", ".join(saved) + ".")
+    if declined:
+        lines.append(
+            "Пользователь НЕ подтвердил запись заметки: "
+            + ", ".join(declined)
+            + ". Она не сохранена — так и скажи в answer."
+        )
     return "\n".join(lines)
 
 
@@ -85,11 +98,15 @@ def check_answer(
     read: Collection[str],
     failed: Collection[str],
     acted: bool = False,
+    notes: Collection[str] = (),
 ) -> list[Issue]:
-    """acted — в ходе выполнено действие (заметка сохранена): ответ о нём источников не
-    требует."""
+    """acted — в ходе была попытка действия (save_note): ответ о нём источников не требует.
+    notes — файлы заметок, сохранённых в ходе: модель называет их источником (failures5.txt,
+    15b/15d/15e), это не ошибка и не документ — такие имена пропускаются."""
     issues: list[Issue] = []
     for name in dict.fromkeys(answer.sources):  # порядок, без повторов
+        if name in notes:
+            continue
         if name not in existing:
             issues.append(
                 Issue("nonexistent", f"ответ ссылается на {name!r} — такого документа в папке нет")

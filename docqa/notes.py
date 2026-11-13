@@ -28,8 +28,7 @@ MAX_TEXT = 2000
 
 
 class SaveNoteArgs(BaseModel):
-    """Сохранить заметку пользователя в его папку заметок. Только когда пользователь сам
-    попросил сохранить или записать; пользователь подтвердит запись."""
+    """Аргументы save_note."""
 
     model_config = ConfigDict(extra="forbid")
     title: str = Field(min_length=1, max_length=MAX_TITLE, description="заголовок заметки")

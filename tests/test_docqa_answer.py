@@ -229,3 +229,33 @@ def test_terminal_confirm_yes_flag_still_shows_arguments(
     assert Terminal(False, None, yes=True).confirm(request) is True
     printed = capsys.readouterr().out
     assert "'Заголовок'" in printed and "| текст" in printed and "--yes" in printed
+
+
+# ---------------------------------------------------------------------------
+# По прогону 5 (failures5.txt, confirm_session.txt)
+# ---------------------------------------------------------------------------
+async def test_fallback_on_question_without_words_does_not_crash() -> None:
+    """confirm_session.txt: вопрос «y» уронил CLI трассировкой — поиску не по чему искать."""
+    client = FakeClient(
+        [answer("Да?"), answer("Уточните вопрос.")], finals=[final("Уточните вопрос.", [], True)]
+    )
+    s, out = make(client)
+    report = await s.ask("y")
+    assert report.fell_back and report.documents_read == []
+    assert out.tools[0].tool_name == "search_documents" and not out.tools[0].ok
+    assert "".join(out.text) == "Уточните вопрос."
+
+
+async def test_declined_note_is_told_to_model_and_needs_no_sources(tmp_path: Path) -> None:
+    client = FakeClient([SAVE, answer("…")], finals=[final("Заметка не сохранена.", [], False)])
+    s, _ = make(client, confirm=lambda r: False, notes_dir=tmp_path)
+    report = await s.ask("Сохрани заметку про доставку")
+    assert "НЕ подтвердил запись заметки: Доставка" in client.final_sent[0][-1]["content"]
+    assert report.issues == []  # «нет источников» после попытки записи — не проблема
+
+
+async def test_saved_note_file_as_source_is_not_an_error(tmp_path: Path) -> None:
+    client = FakeClient([SAVE, answer("…")], finals=[final("Сохранил.", ["доставка.md"], False)])
+    s, _ = make(client, confirm=lambda r: True, notes_dir=tmp_path)
+    report = await s.ask("Сохрани заметку про доставку")
+    assert report.issues == [] and report.notes_saved == ["Доставка"]

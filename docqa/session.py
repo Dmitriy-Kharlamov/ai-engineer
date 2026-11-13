@@ -79,6 +79,7 @@ from ragkit.streaming import (
 from ragkit.structured import AsyncStructuredClient, aask_structured
 from ragkit.tools import (
     IterationLimitError,
+    PublicToolError,
     Step,
     ToolLoop,
     ToolResult,
@@ -93,7 +94,7 @@ from .answer import DocAnswer, Issue, check_answer, instruction, valid_sources
 from .documents import DocumentStore, build_registry
 from .events import Events, NoEvents, clip
 from .guards import AnswerFilter, DomainRedactor
-from .notes import Confirm, NoteRequest, NoteStore
+from .notes import Confirm, NoteRequest, NoteStore, slug
 
 Msg = Mapping[str, Any]
 HistoryMode = Literal["full", "stubs", "answers"]
@@ -286,6 +287,14 @@ class TurnReport:
             str((r.arguments or {}).get("title", ""))
             for r in self.calls
             if r.ok and r.tool_name == "save_note"
+        ]
+
+    @property
+    def notes_declined(self) -> list[str]:
+        return [
+            str((r.arguments or r.requested_arguments or {}).get("title", ""))
+            for r in self.calls
+            if r.tool_name == "save_note" and r.detail.startswith("NotConfirmedError")
         ]
 
     @property
@@ -747,7 +756,12 @@ class Session:
         s = self.settings
         note = {
             "role": "user",
-            "content": instruction(report.documents_read, report.read_failed, report.notes_saved),
+            "content": instruction(
+                report.documents_read,
+                report.read_failed,
+                report.notes_saved,
+                declined=report.notes_declined,
+            ),
         }
         messages = [*sent, *produced, note]  # note — только в этом обращении, не в истории
         self._check_request(messages, turn, "итог")
@@ -818,7 +832,8 @@ class Session:
             existing=self.store.names(),
             read=report.documents_read,
             failed=report.read_failed,
-            acted=bool(report.notes_saved),
+            acted=any(r.tool_name == "save_note" for r in report.calls),
+            notes=[f"{slug(t)}.md" for t in report.notes_saved],
         )
 
     def _spend(self, reply: Any) -> None:
@@ -842,7 +857,10 @@ class Session:
         ход получает пример с вызовами, а не ответ без них (история — пример, Ф4-06).
         """
         query = " ".join(question.split())[:FALLBACK_QUERY_CHARS]
-        hits = [h["name"] for h in self.store.search(query)["results"]]
+        try:
+            hits = [h["name"] for h in self.store.search(query)["results"]]
+        except PublicToolError:  # «y», «?»: искать не по чему — поиск сам скажет это модели
+            hits = []
         steps: list[tuple[str, dict[str, Any]]] = [("search_documents", {"query": query})]
         if hits:
             steps.append(("read_document", {"name": hits[0]}))

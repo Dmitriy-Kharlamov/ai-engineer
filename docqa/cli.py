@@ -213,6 +213,13 @@ async def run(questions: list[str] | None, session: Session, term: Terminal) -> 
             failures += 1
             term.line(f"[ответа нет] {failure(error, term.shown)}")
             return
+        except Exception as error:  # noqa: BLE001 — ошибка docqa: не трассировка, а ответ
+            failures += 1
+            term.line(
+                f"[ответа нет] внутренняя ошибка docqa ({type(error).__name__}: {error}); "
+                "ход в историю не записан. Это ошибка программы — сообщите о ней"
+            )
+            return
         term.end()
         read = report.documents_read
         if report.structured is not None:

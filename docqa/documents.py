@@ -165,9 +165,8 @@ def build_registry(store: DocumentStore, notes: NoteStore | None = None) -> Tool
 
         @registry.tool(SaveNoteArgs, name="save_note")
         def _save(args: SaveNoteArgs) -> dict[str, Any]:
-            """Сохранить заметку в папку заметок пользователя. Только когда пользователь сам
-            попросил что-то сохранить или записать. Пользователь подтверждает запись; если
-            не подтвердил — заметки нет, скажи об этом."""
+            """Сохранить заметку пользователя — только если он сам попросил сохранить.
+            Запись подтверждает пользователь."""
             return notes.save(args)
 
     return registry
