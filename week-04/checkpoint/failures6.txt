@@ -1,0 +1,240 @@
+коммит 932dcc87eb77 + незакоммиченные правки; python -m docqa, модель по умолчанию; каждый сценарий — подпроцесс
+   прогнозы и результаты прогонов — в шапке скрипта
+
+====================================================================================================
+[07a] переполнение окна посреди хода
+$ python -m docqa --fault read-all --num-ctx 2560 -q 'Расскажи всё, что есть в документах' --log week-04/checkpoint/out/failures/07a.txt --events week-04/checkpoint/out/failures/07a.events.jsonl
+код возврата 1, 0 с
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ read-all: 1-е обращение: read_document для каждого документа сразу
+
+вы> Расскажи всё, что есть в документах
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение 2: вход 3758 токенов (оценка) при окне 2048 (num_ctx 2560 − num_predict 512); сообщений 9. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×1, response×1, tool×6, turn_failed×1
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "events.md"}, "kind": "ok", "content_chars": 500, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "gift_cards.md"}, "kind": "ok", "content_chars": 511, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "hours.md"}, "kind": "ok", "content_chars": 542, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "loyalty.md"}, "kind": "ok", "content_chars": 593, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   turn_failed: {"turn": 1, "error": "BudgetExceededError", "message": "ход 1, обращение 2: вход 3758 токенов (оценка) при окне 2048 (num_ctx 2560 − num_predict 512); сообщений 9", "history_messages": 0, "spent_usd": 0.0}
+
+====================================================================================================
+[07b] переполнение окна посреди сессии
+$ python -m docqa --fault read-all-turns --history full --num-ctx 4352 -q 'Расскажи коротко, что есть в документах' -q 'А что из этого про доставку?' --log week-04/checkpoint/out/failures/07b.txt --events week-04/checkpoint/out/failures/07b.events.jsonl
+код возврата 1, 36 с
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ read-all-turns: 1-е обращение каждого хода: read_document для каждого документа
+
+вы> Расскажи коротко, что есть в документах
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение итог: вход 4142 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+
+вы> А что из этого про доставку?
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+  · read_document(name='events.md') → ok, 500 симв. модели
+  · read_document(name='gift_cards.md') → ok, 511 симв. модели
+  · read_document(name='hours.md') → ok, 542 симв. модели
+  · read_document(name='loyalty.md') → ok, 593 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение итог: вход 4134 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+--- журнал событий ---
+   по типам: session×1, turn_start×2, request×4, response×4, tool×12, draft×2, turn_failed×2
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "events.md"}, "kind": "ok", "content_chars": 500, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "gift_cards.md"}, "kind": "ok", "content_chars": 511, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "hours.md"}, "kind": "ok", "content_chars": 542, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "loyalty.md"}, "kind": "ok", "content_chars": 593, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   draft: {"turn": 1, "request": 2, "text": "В папке есть следующие документы:\n\n- **delivery.md**: информация о доставке товаров, включая курьерскую доставку, доставку в пункты выдачи СДЭК и самовывоз из магазинов.\n- **events.md**: описание встр…(+296)"}
+   turn_failed: {"turn": 1, "error": "BudgetExceededError", "message": "ход 1, обращение итог: вход 4142 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10", "history_messages": 0, "spent_usd": 0.005534}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "events.md"}, "kind": "ok", "content_chars": 500, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "gift_cards.md"}, "kind": "ok", "content_chars": 511, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "hours.md"}, "kind": "ok", "content_chars": 542, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "loyalty.md"}, "kind": "ok", "content_chars": 593, "detail": null}
+   tool: {"turn": 1, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   draft: {"turn": 1, "request": 2, "text": "Информация о доставке содержится в документе \"delivery.md\":\n\n- Курьерская доставка по Казани — 290 рублей, срок — 1–2 рабочих дня. Заказ от 2500 рублей доставляется бесплатно.\n- Доставка в пункты выда…(+360)"}
+   turn_failed: {"turn": 1, "error": "BudgetExceededError", "message": "ход 1, обращение итог: вход 4134 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10", "history_messages": 0, "spent_usd": 0.01158}
+
+====================================================================================================
+[09b] бюджет сессии
+$ python -m docqa --session-usd 0.018 -q 'Сколько стоит доставка курьером?' -q 'А возврат электронной книги?' -q 'А подарочным сертификатом можно оплатить доставку?' --log week-04/checkpoint/out/failures/09b.txt --events week-04/checkpoint/out/failures/09b.events.jsonl
+код возврата 1, 24 с
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1
+
+вы> Сколько стоит доставка курьером?
+модель> Проверю это в документах.
+
+
+  · list_documents() → ok, 475 симв. модели
+модель> Проверю информацию о доставке в документе "Доставка".
+
+
+  · read_document(name='delivery.md') → ok, 638 симв. модели
+модель> Курьерская доставка по Казани — 290 рублей.
+  [источники: delivery.md]
+
+вы> А возврат электронной книги?
+  [код] модель ответила, не прочитав ни одного документа; этот ответ не показан — код сам ищет по вопросу и читает найденное
+  · search_documents(query='А возврат электронной книги?') → ok, 716 симв. модели
+  · read_document(name='returns.md') → ok, 638 симв. модели
+[ответа нет] запрос не отправлен — бюджет сессии исчерпан: потрачено в сессии 0.01169 $, следующее обращение ≤ 0.00901 $ — вместе больше порога сессии 0.01800 $
+
+вы> А подарочным сертификатом можно оплатить доставку?
+[ответа нет] запрос не отправлен — бюджет сессии исчерпан: потрачено в сессии 0.01169 $, следующее обращение ≤ 0.00860 $ — вместе больше порога сессии 0.01800 $
+--- журнал событий ---
+   по типам: session×1, turn_start×3, request×6, response×5, tool×4, draft×2, answer×1, turn_end×1, fallback×1, turn_failed×2
+   tool: {"turn": 1, "request": 1, "requested": "list_documents", "arguments": {}, "kind": "ok", "content_chars": 475, "detail": null}
+   tool: {"turn": 1, "request": 2, "requested": "read_document", "arguments": {"name": "delivery.md"}, "kind": "ok", "content_chars": 638, "detail": null}
+   draft: {"turn": 1, "request": 3, "text": "Курьерская доставка по Казани стоит 290 рублей и занимает 1–2 рабочих дня. Заказ от 2500 рублей доставляется бесплатно."}
+   answer: {"turn": 1, "sources": ["delivery.md"], "not_found": false, "issues": [], "prompt_eval_count": 793, "eval_count": 41}
+   turn_end: {"turn": 1, "answer_chars": 43, "answer": "Курьерская доставка по Казани — 290 рублей.", "documents_read": ["delivery.md"], "not_done": [], "removed_addresses": [], "history_messages": 6, "spent_usd": 0.007488}
+   fallback: {"turn": 2, "request": 1, "hidden_answer": "Документов о возврате электронных книг нет."}
+   tool: {"turn": 2, "request": 1, "requested": "search_documents", "arguments": {"query": "А возврат электронной книги?"}, "kind": "ok", "content_chars": 716, "detail": null, "by": "код"}
+   tool: {"turn": 2, "request": 1, "requested": "read_document", "arguments": {"name": "returns.md"}, "kind": "ok", "content_chars": 638, "detail": null, "by": "код"}
+   draft: {"turn": 2, "request": 2, "text": "Электронные книги и аудиокниги возврату не подлежат."}
+   turn_failed: {"turn": 2, "error": "SessionBudgetError", "message": "потрачено в сессии 0.01169 $, следующее обращение ≤ 0.00901 $ — вместе больше порога сессии 0.01800 $", "history_messages": 6, "spent_usd": 0.011688}
+   turn_failed: {"turn": 2, "error": "SessionBudgetError", "message": "потрачено в сессии 0.01169 $, следующее обращение ≤ 0.00860 $ — вместе больше порога сессии 0.01800 $", "history_messages": 6, "spent_usd": 0.011688}
+
+====================================================================================================
+[15a] save_note: пользователь отвечает «n»
+$ python -m docqa --fault save-note --notes week-04/checkpoint/out/notes -q 'Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.' --log week-04/checkpoint/out/failures/15a.txt --events week-04/checkpoint/out/failures/15a.events.jsonl
+код возврата 0, 4 с
+stdin: 'n\n'; файлов в папке заметок после запуска: 0
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ save-note: 1-е обращение: модель зовёт save_note — проверка подтверждения
+
+вы> Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] модель хочет сохранить заметку в week-04/checkpoint/out/notes/доставка-курьером.md:
+      заголовок: 'Доставка курьером'
+      текст (34 симв.):
+      | Курьер по Казани — 290 ₽, 1–2 дня.
+  [код] сохранить? [y/N]: n
+  [код] не сохраняю
+  · save_note(title='Доставка курьером', text='Курьер по Казани — 290 ₽, 1–2 дня.') → failed, 84 симв. модели: ошибка: пользователь не подтвердил запись; заметка НЕ сохранена. Скажи об этом прямо
+  [код] не выполнено: save_note — заметка не сохранена: нет подтверждения
+модель> Заметка не сохранена.
+  [источников нет; документы в этом ходе не читались]
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×3, response×2, tool×1, draft×1, answer×1, turn_end×1
+   tool: {"turn": 1, "request": 1, "requested": "save_note", "arguments": {"title": "Доставка курьером", "text": "Курьер по Казани — 290 ₽, 1–2 дня."}, "kind": "failed", "content_chars": 84, "detail": "NotConfirmedError: пользователь не подтвердил запись; заметка НЕ сохранена. Скажи об этом прямо"}
+   draft: {"turn": 1, "request": 2, "text": "Заметка не сохранена."}
+   answer: {"turn": 1, "sources": [], "not_found": false, "issues": [], "prompt_eval_count": 454, "eval_count": 28}
+   turn_end: {"turn": 1, "answer_chars": 21, "answer": "Заметка не сохранена.", "documents_read": [], "not_done": ["save_note:failed"], "removed_addresses": [], "history_messages": 4, "spent_usd": 0.0025}
+
+====================================================================================================
+[15b] save_note: пользователь отвечает «y»
+$ python -m docqa --fault save-note --notes week-04/checkpoint/out/notes -q 'Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.' --log week-04/checkpoint/out/failures/15b.txt --events week-04/checkpoint/out/failures/15b.events.jsonl
+код возврата 0, 6 с
+stdin: 'y\n'; файлов в папке заметок после запуска: 1
+   доставка-курьером.md: '# Доставка курьером\n\nКурьер по Казани — 290 ₽, 1–2 дня.\n'
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ save-note: 1-е обращение: модель зовёт save_note — проверка подтверждения
+
+вы> Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] модель хочет сохранить заметку в week-04/checkpoint/out/notes/доставка-курьером.md:
+      заголовок: 'Доставка курьером'
+      текст (34 симв.):
+      | Курьер по Казани — 290 ₽, 1–2 дня.
+  [код] сохранить? [y/N]: y
+  [код] сохраняю
+  · save_note(title='Доставка курьером', text='Курьер по Казани — 290 ₽, 1–2 дня.') → ok, 166 симв. модели
+модель> Курьер по Казани — 290 ₽, 1–2 дня.
+  [источников нет; документы в этом ходе не читались; сохранена заметка: Доставка курьером]
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×3, response×2, tool×1, draft×1, answer×1, turn_end×1
+   tool: {"turn": 1, "request": 1, "requested": "save_note", "arguments": {"title": "Доставка курьером", "text": "Курьер по Казани — 290 ₽, 1–2 дня."}, "kind": "ok", "content_chars": 166, "detail": null}
+   draft: {"turn": 1, "request": 2, "text": "Заметка сохранена. Курьер по Казани стоит 290 рублей и доставка занимает 1–2 дня. Документ: доставка-курьером.md."}
+   answer: {"turn": 1, "sources": ["доставка-курьером.md"], "not_found": false, "issues": [], "prompt_eval_count": 484, "eval_count": 52}
+   turn_end: {"turn": 1, "answer_chars": 34, "answer": "Курьер по Казани — 290 ₽, 1–2 дня.", "documents_read": [], "not_done": [], "removed_addresses": [], "history_messages": 4, "spent_usd": 0.00327}
+
+====================================================================================================
+[15c] save_note: ввода нет (EOF) — значит «нет»
+$ python -m docqa --fault save-note --notes week-04/checkpoint/out/notes -q 'Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.' --log week-04/checkpoint/out/failures/15c.txt --events week-04/checkpoint/out/failures/15c.events.jsonl
+код возврата 0, 3 с
+stdin: ''; файлов в папке заметок после запуска: 0
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ save-note: 1-е обращение: модель зовёт save_note — проверка подтверждения
+
+вы> Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] модель хочет сохранить заметку в week-04/checkpoint/out/notes/доставка-курьером.md:
+      заголовок: 'Доставка курьером'
+      текст (34 симв.):
+      | Курьер по Казани — 290 ₽, 1–2 дня.
+  [код] сохранить? [y/N]: 
+  [код] не сохраняю
+  · save_note(title='Доставка курьером', text='Курьер по Казани — 290 ₽, 1–2 дня.') → failed, 84 симв. модели: ошибка: пользователь не подтвердил запись; заметка НЕ сохранена. Скажи об этом прямо
+  [код] не выполнено: save_note — заметка не сохранена: нет подтверждения
+модель> Заметка не сохранена.
+  [источников нет; документы в этом ходе не читались]
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×3, response×2, tool×1, draft×1, answer×1, turn_end×1
+   tool: {"turn": 1, "request": 1, "requested": "save_note", "arguments": {"title": "Доставка курьером", "text": "Курьер по Казани — 290 ₽, 1–2 дня."}, "kind": "failed", "content_chars": 84, "detail": "NotConfirmedError: пользователь не подтвердил запись; заметка НЕ сохранена. Скажи об этом прямо"}
+   draft: {"turn": 1, "request": 2, "text": "Заметка не сохранена."}
+   answer: {"turn": 1, "sources": [], "not_found": false, "issues": [], "prompt_eval_count": 454, "eval_count": 28}
+   turn_end: {"turn": 1, "answer_chars": 21, "answer": "Заметка не сохранена.", "documents_read": [], "not_done": ["save_note:failed"], "removed_addresses": [], "history_messages": 4, "spent_usd": 0.0025}
+
+====================================================================================================
+[15d] save_note с --yes
+$ python -m docqa --fault save-note --notes week-04/checkpoint/out/notes --yes -q 'Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.' --log week-04/checkpoint/out/failures/15d.txt --events week-04/checkpoint/out/failures/15d.events.jsonl
+код возврата 0, 6 с
+stdin: ''; файлов в папке заметок после запуска: 1
+   доставка-курьером.md: '# Доставка курьером\n\nКурьер по Казани — 290 ₽, 1–2 дня.\n'
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ save-note: 1-е обращение: модель зовёт save_note — проверка подтверждения
+
+вы> Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] модель хочет сохранить заметку в week-04/checkpoint/out/notes/доставка-курьером.md:
+      заголовок: 'Доставка курьером'
+      текст (34 симв.):
+      | Курьер по Казани — 290 ₽, 1–2 дня.
+  [код] --yes: подтверждено без вопроса
+  · save_note(title='Доставка курьером', text='Курьер по Казани — 290 ₽, 1–2 дня.') → ok, 166 симв. модели
+модель> Курьер по Казани — 290 ₽, 1–2 дня.
+  [источников нет; документы в этом ходе не читались; сохранена заметка: Доставка курьером]
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×3, response×2, tool×1, draft×1, answer×1, turn_end×1
+   tool: {"turn": 1, "request": 1, "requested": "save_note", "arguments": {"title": "Доставка курьером", "text": "Курьер по Казани — 290 ₽, 1–2 дня."}, "kind": "ok", "content_chars": 166, "detail": null}
+   draft: {"turn": 1, "request": 2, "text": "Заметка сохранена. Курьер по Казани стоит 290 рублей и доставка занимает 1–2 дня. Документ: доставка-курьером.md."}
+   answer: {"turn": 1, "sources": ["доставка-курьером.md"], "not_found": false, "issues": [], "prompt_eval_count": 484, "eval_count": 52}
+   turn_end: {"turn": 1, "answer_chars": 34, "answer": "Курьер по Казани — 290 ₽, 1–2 дня.", "documents_read": [], "not_done": [], "removed_addresses": [], "history_messages": 4, "spent_usd": 0.00327}
+
+====================================================================================================
+[15e] save_note без подмены: модель зовёт сама, ответ «y»
+$ python -m docqa --notes week-04/checkpoint/out/notes -q 'Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.' --log week-04/checkpoint/out/failures/15e.txt --events week-04/checkpoint/out/failures/15e.events.jsonl
+код возврата 0, 10 с
+stdin: 'y\n'; файлов в папке заметок после запуска: 1
+   стоимость-курьера.md: '# Стоимость курьера\n\nкурьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.\n'
+--- терминал ---
+docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1
+
+вы> Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] модель хочет сохранить заметку в week-04/checkpoint/out/notes/стоимость-курьера.md:
+      заголовок: 'Стоимость курьера'
+      текст (60 симв.):
+      | курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.
+  [код] сохранить? [y/N]: y
+  [код] сохраняю
+  · save_note(title='Стоимость курьера', text='курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно.') → ok, 192 симв. модели
+модель> Стоимость курьера по Казани 290 рублей, от 2500 рублей бесплатно.
+  [источников нет — модель не нашла ответа в прочитанном; документы в этом ходе не читались; сохранена заметка: Стоимость курьера]
+--- журнал событий ---
+   по типам: session×1, turn_start×1, request×3, response×2, tool×1, draft×1, answer×1, turn_end×1
+   tool: {"turn": 1, "request": 1, "requested": "save_note", "arguments": {"title": "Стоимость курьера", "text": "курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно."}, "kind": "ok", "content_chars": 192, "detail": null}
+   draft: {"turn": 1, "request": 2, "text": "Заметка сохранена. Стоимость курьера по Казани — 290 рублей, от 2500 рублей бесплатно. Документ сохранен как «стоимость-курьера.md»."}
+   answer: {"turn": 1, "sources": [], "not_found": true, "issues": [], "prompt_eval_count": 483, "eval_count": 47}
+   turn_end: {"turn": 1, "answer_chars": 65, "answer": "Стоимость курьера по Казани 290 рублей, от 2500 рублей бесплатно.", "documents_read": [], "not_done": [], "removed_addresses": [], "history_messages": 4, "spent_usd": 0.004842}
