@@ -2,6 +2,10 @@
 
     python -u week-04/checkpoint/answers.py 2>&1 | tee week-04/checkpoint/answers.txt
     python -u week-04/checkpoint/answers.py --seeds 1      # быстрая проверка, ~5 мин
+    python -u week-04/checkpoint/answers.py --dump week-05.5/data/answers60.jsonl   # Ф5.5-01
+
+--dump (Ф5.5-01): каждый ответ целиком — строкой JSON в файл, для ручной разметки и судьи
+(в выводе выше от ответа только хвост в 70 знаков, а «факт» — регулярка, не человек).
 
 10 вопросов по sample_docs (9 с ответом в одном документе, 1 — без ответа в папке) × seed 1…3
 × два режима, temperature 0.7, свежая сессия на каждый вопрос:
@@ -48,6 +52,7 @@
 
 import argparse
 import asyncio
+import json
 import math
 import re
 import statistics
@@ -158,7 +163,9 @@ def commit() -> str:
     return head + (" + незакоммиченные правки" if dirty else "")
 
 
-async def one(mode: str, index: int, seed: int, tally: Tally, host: str | None) -> None:
+async def one(
+    mode: str, index: int, seed: int, tally: Tally, host: str | None, dump: Path | None
+) -> None:
     question, doc, fact_re = QUESTIONS[index]
     store = DocumentStore(DOCS)
     client = ollama.AsyncClient(host=host)
@@ -201,6 +208,21 @@ async def one(mode: str, index: int, seed: int, tally: Tally, host: str | None) 
         tally.read += doc in report.documents_read
         tally.cited += doc in cited
         mark = f"{'прочитал' if doc in report.documents_read else 'НЕ читал'} {doc}"
+    if dump is not None:
+        record = {
+            "id": f"{mode}-в{index + 1}-s{seed}",
+            "mode": mode,
+            "seed": seed,
+            "q": index + 1,
+            "question": question,
+            "doc": doc,
+            "answer": shown,
+            "documents_read": report.documents_read,
+            "sources": cited,
+            "regex_fact": fact,
+        }
+        with dump.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
     print(
         f"      в{index + 1:<2} seed {seed}: факт {'да ' if fact else 'НЕТ'}; {mark}; "
         f"ссылки {cited or '—'}"
@@ -213,7 +235,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--seeds", type=int, default=3)
     parser.add_argument("--host", default=None)
+    parser.add_argument("--dump", type=Path, default=None, help="JSONL: ответы целиком")
     args = parser.parse_args()
+    if args.dump is not None:
+        args.dump.parent.mkdir(parents=True, exist_ok=True)
+        args.dump.write_text("", encoding="utf-8")
     print(f"коммит {commit()}; модель {Settings().model}; temperature 0.7, seed 1…{args.seeds}")
     print(f"   прогноз (до запуска): {(__doc__ or '').split('Прогноз (до запуска): ')[1].strip()}")
     tallies = {mode: Tally() for mode in MODES}
@@ -221,7 +247,7 @@ def main() -> int:
         print(f"\n[{mode}]")
         for index in range(len(QUESTIONS)):
             for seed in range(1, args.seeds + 1):
-                asyncio.run(one(mode, index, seed, tallies[mode], args.host))
+                asyncio.run(one(mode, index, seed, tallies[mode], args.host, args.dump))
     print("\nитог: [95 % Wilson]")
     print(
         "   режим   факт                   нужный прочитан        нужный назван          "

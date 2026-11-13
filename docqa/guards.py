@@ -19,49 +19,13 @@ import re
 from collections.abc import Callable, Collection
 from dataclasses import dataclass, field
 
+from ragkit.quarantine import QUARANTINED as QUARANTINED
+from ragkit.quarantine import is_instruction_for_ai as is_instruction_for_ai
+from ragkit.quarantine import quarantine as quarantine
 from ragkit.tools import looks_like_raw_call
 
-# ---------------------------------------------------------------------------
-# Карантин строк документа
-# ---------------------------------------------------------------------------
-QUARANTINED = "[строка удалена кодом: похожа на инструкцию для ИИ]"
-
-_ADDRESS = re.compile(
-    r"\b(ии|ai|ассистент\w*|нейросет\w*|чат-?бот\w*|бот\w*|модел[ьи]|языков\w+\s+модел\w*|"
-    r"chatgpt|gpt|llm|assistant|language\s+model)\b",
-    re.IGNORECASE,
-)
-# Повелительное наклонение на «ты» — так пишут модели, а не клиентам и не сотрудникам
-# («добавьте», «упоминайте» сюда не входят: это формы на «вы»).
-_IMPERATIVE = re.compile(
-    r"\b(добавь|добавляй|допиши|напиши|пиши|скажи|говори|ответь|отвечай|упомяни|упоминай|"
-    r"игнорируй|забудь|выведи|сообщи|порекомендуй|рекомендуй|включи|вставь|предложи|"
-    r"always|ignore|add|say|include|mention|respond|reply|forget|append)\b",
-    re.IGNORECASE,
-)
-_OVERRIDE = re.compile(
-    r"\b(игнорируй|забудь|отмени)\w*\s+(все\s+)?(предыдущ|прежн|остальн|системн)\w*|"
-    r"\bignore\s+(all\s+)?(previous|prior|above)|"
-    r"\b(инструкци\w*|указани\w*)\s+для\s+(ии|ai|ассистент\w*|модел\w*|бот\w*|нейросет\w*)",
-    re.IGNORECASE,
-)
-
-
-def is_instruction_for_ai(line: str) -> bool:
-    return bool(_OVERRIDE.search(line)) or bool(_ADDRESS.search(line) and _IMPERATIVE.search(line))
-
-
-def quarantine(text: str) -> tuple[str, list[str]]:
-    """Текст без строк-инструкций и список удалённых строк (для журнала, не для модели)."""
-    kept: list[str] = []
-    removed: list[str] = []
-    for line in text.split("\n"):
-        if is_instruction_for_ai(line):
-            removed.append(line.strip())
-            kept.append(QUARANTINED)
-        else:
-            kept.append(line)
-    return "\n".join(kept), removed
+# Карантин строк документа живёт в ragkit.quarantine (Ф5.5-01: им же пользуется судья, а
+# ragkit не может импортировать docqa) — здесь реэкспорт для docqa и старых тестов.
 
 
 # ---------------------------------------------------------------------------
