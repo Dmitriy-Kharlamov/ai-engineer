@@ -7,7 +7,8 @@ docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/doc
   · read_document(name='hours.md') → ok, 542 симв. модели
   · read_document(name='loyalty.md') → ok, 593 симв. модели
   · read_document(name='returns.md') → ok, 638 симв. модели
-[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение итог: вход 4142 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+модель> В документах есть информация о доставке, часах работы, подарочных сертификатах, программах лояльности и возврате товаров.
+  [источники: delivery.md, hours.md, gift_cards.md, loyalty.md, returns.md; прочитано в этом ходе: delivery.md, events.md, gift_cards.md, hours.md, loyalty.md, returns.md]
 
 вы> А что из этого про доставку?
   · read_document(name='delivery.md') → ok, 638 симв. модели
@@ -16,4 +17,4 @@ docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/doc
   · read_document(name='hours.md') → ok, 542 симв. модели
   · read_document(name='loyalty.md') → ok, 593 симв. модели
   · read_document(name='returns.md') → ok, 638 симв. модели
-[ответа нет] запрос не отправлен — не помещается в окно модели: ход 1, обращение итог: вход 4134 токенов (оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 10. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
+[ответа нет] запрос не отправлен — не помещается в окно модели: ход 2, обращение 2: вход 4425 токенов (факт+оценка) при окне 3840 (num_ctx 4352 − num_predict 512); сообщений 18. Можно /reset (забыть историю), вопрос уже или больший --num-ctx
