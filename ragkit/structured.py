@@ -197,6 +197,37 @@ def parse_structured(content: str, done_reason: str | None, schema: type[T]) -> 
         ) from None
 
 
+class AsyncStructuredClient(Protocol):
+    async def chat(
+        self,
+        *,
+        model: str,
+        messages: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+        format: dict[str, Any] | Literal["json"],  # noqa: A002 — имя параметра у ollama
+        stream: Literal[False] = False,
+    ) -> ChatReply: ...
+
+
+async def aask_structured(
+    client: AsyncStructuredClient,
+    model: str,
+    messages: Sequence[Mapping[str, Any]],
+    schema: type[T],
+    options: Mapping[str, Any] | None = None,
+) -> tuple[T, ChatReply]:
+    """Асинхронный ask_structured (Ф4-08): та же схема в format=, тот же разбор и те же три
+    отказа. Возвращает и ответ сервера — у вызывающего на нём счётчики токенов."""
+    reply = await client.chat(
+        model=model,
+        messages=messages,
+        options=options,
+        format=schema.model_json_schema(),
+        stream=False,
+    )
+    return parse_structured(reply.message.content or "", reply.done_reason, schema), reply
+
+
 def ask_structured(
     client: StructuredClient,
     model: str,

@@ -53,6 +53,7 @@ def make(
     async def sleep(seconds: float) -> None:
         pauses.append(seconds)
 
+    settings.setdefault("structured", False)  # итог-объект — тесты в test_docqa_answer
     s = Session(
         store or DocumentStore(SAMPLE),
         client,
@@ -60,6 +61,7 @@ def make(
         Settings(**settings),
         sleep=sleep,
         rng=lambda: 0.5,
+        structured=client,
     )
     return s, out, pauses
 
@@ -253,7 +255,7 @@ async def test_busy_server_is_retried_with_notice() -> None:
     s, out, pauses = make(client, fallback=False)
     report = await s.ask("Доставка?")
     assert report.answer == "Курьер — 290 ₽." and report.iterations[0].attempts == 3
-    assert pauses == [0.5, 1.0]  # полный джиттер при rng=0,5: 0,5·1 и 0,5·2
+    assert pauses == [1.25, 2.25]  # аддитивный при rng=0,5: 1 + 0,25 и 2 + 0,25
     assert len(out.notices) == 2 and all("занят" in n for n in out.notices)
 
 
@@ -341,14 +343,18 @@ async def test_every_fault_produces_a_visible_outcome(fault: Any, tmp_path: Path
         DocumentStore(SAMPLE),
         client,
         out,
-        Settings(num_ctx=2048 if fault == "read-all" else 8192, timeouts=Settings().timeouts),
+        Settings(
+            num_ctx=2048 if fault == "read-all" else 8192,
+            timeouts=Settings().timeouts,
+            structured=False,
+        ),
         events=log,
         sleep=sleep,
     )
     if fault == "stream-stall":
         from ragkit.streaming import StreamTimeouts
 
-        s.settings = Settings(timeouts=StreamTimeouts(1.0, 0.05, 2.0))
+        s.settings = Settings(timeouts=StreamTimeouts(1.0, 0.05, 2.0), structured=False)
     try:
         report = await s.ask("Сколько стоит доставка?")
         visible = bool(report.answer) or bool(out.notices)

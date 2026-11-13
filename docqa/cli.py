@@ -33,11 +33,19 @@ from ragkit.streaming import (
     StreamTimeouts,
     StreamTruncated,
 )
+from ragkit.structured import (
+    AsyncStructuredClient,
+    NotJSONError,
+    SchemaMismatchError,
+    StructuredOutputError,
+    TruncatedOutputError,
+)
 from ragkit.tools import IterationLimitError, ToolResult, UnparsedToolCallError
 
 from .documents import DocumentStore
 from .events import EventLog
-from .faults import FAULTS, CrashingStore, Fault, FaultyClient
+from .faults import FAULTS, BadSourcesClient, CrashingStore, Fault, FaultyClient
+from .notes import NoteRequest
 from .session import (
     EmptyAnswerError,
     RepeatLoopError,
@@ -58,9 +66,10 @@ KIND_TEXT = {
 class Terminal:
     """Вывод в терминал и, если задан, в файл расшифровки — одно и то же."""
 
-    def __init__(self, debug: bool, log: TextIO | None) -> None:
+    def __init__(self, debug: bool, log: TextIO | None, *, yes: bool = False) -> None:
         self.show_debug = debug
         self.log = log
+        self.yes = yes  # --yes: подтверждать запись без вопроса (аргументы всё равно видны)
         self._line_open = False
         self._answering = False
         self.shown = False  # видел ли пользователь в этом ходе хоть символ ответа
@@ -115,6 +124,30 @@ class Terminal:
         self.line(f"\nвы> {text}")
         self._answering = False
 
+    def confirm(self, request: NoteRequest) -> bool:
+        """Показать ровно то, что будет записано, и спросить. Нет ответа (EOF) — «нет»."""
+        self._answering = False
+        self.line(f"  [код] модель хочет сохранить заметку в {request.path}:")
+        self.line(f"      заголовок: {request.title!r}")
+        self.line(f"      текст ({len(request.text)} симв.):")
+        for text_line in request.text.splitlines() or [""]:
+            self.line(f"      | {text_line}")
+        if self.yes:
+            self.line("  [код] --yes: подтверждено без вопроса")
+            return True
+        self.write("  [код] сохранить? [y/N]: ")
+        try:
+            reply = input()
+        except EOFError:
+            reply = ""
+        if not sys.stdin.isatty():  # ответ пришёл не с клавиатуры — показать его в расшифровке
+            self.write(reply + "\n")
+        elif self.log is not None:
+            self.log.write(reply + "\n")
+        agreed = reply.strip().casefold() in ("y", "yes", "д", "да")
+        self.line(f"  [код] {'сохраняю' if agreed else 'не сохраняю'}")
+        return agreed
+
 
 def failure(error: BaseException, shown: bool) -> str:
     """Что пользователь видит, когда ход не удался. Ни одна ветка не говорит «готово».
@@ -135,6 +168,13 @@ def failure(error: BaseException, shown: bool) -> str:
         return f"модель зациклилась на одном вызове: {error}"
     if isinstance(error, IterationLimitError):
         return f"модель не закончила за отведённое число обращений: {error}"
+    if isinstance(error, TruncatedOutputError):
+        return (
+            "итоговый ответ оборван по лимиту num_predict — не показываю обрывок JSON; "
+            "можно больший --num-predict"
+        )
+    if isinstance(error, NotJSONError | SchemaMismatchError | StructuredOutputError):
+        return f"итоговый ответ не прошёл схему DocAnswer: {error}"
     if isinstance(error, EmptyAnswerError):
         return f"модель вернула пустой ответ; в историю ничего не записано ({error})"
     if isinstance(error, UnparsedToolCallError):
@@ -174,14 +214,31 @@ async def run(questions: list[str] | None, session: Session, term: Terminal) -> 
             term.line(f"[ответа нет] {failure(error, term.shown)}")
             return
         term.end()
-        if report.not_done:
+        read = report.documents_read
+        if report.structured is not None:
+            sources = report.sources
+            if sources:
+                line = f"источники: {', '.join(sources)}"
+            elif report.structured.not_found:
+                line = "источников нет — модель не нашла ответа в прочитанном"
+            else:
+                line = "источников нет"
+            if read and read != sources:
+                line += f"; прочитано в этом ходе: {', '.join(read)}"
+            elif not read:
+                line += "; документы в этом ходе не читались"
+            if report.notes_saved:
+                line += f"; сохранена заметка: {', '.join(report.notes_saved)}"
+            term.line(f"  [{line}]")
+        if report.not_done and report.structured is None:  # при итоге — уже до ответа
             term.line(
                 "  [не выполнено в этом ходе: "
                 + "; ".join(f"{r.requested} — {KIND_TEXT[r.kind]}" for r in report.not_done)
                 + "]"
             )
-        read = report.documents_read
-        if read:
+        if report.structured is not None:
+            pass
+        elif read:
             term.line(f"  [прочитано в этом ходе: {', '.join(read)}]")
         else:
             calls = len(report.calls)
@@ -252,6 +309,22 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--events", type=Path, help="журнал событий, JSON по строке")
     parser.add_argument(
+        "--notes",
+        type=Path,
+        default=Path("notes"),
+        help="папка заметок save_note (по умолчанию ./notes); запись — только с подтверждения",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="подтверждать запись заметок без вопроса (аргументы всё равно печатаются)",
+    )
+    parser.add_argument(
+        "--no-structured",
+        action="store_true",
+        help="итог — свободный текст модели потоком, без проверки источников",
+    )
+    parser.add_argument(
         "--no-fallback",
         action="store_true",
         help="показывать ответ без чтения документов сразу; код сам не ищет и не читает",
@@ -282,18 +355,32 @@ def main(argv: list[str] | None = None) -> int:
         redact_addresses=not args.unsafe,
         allowed_domains=tuple(args.allow_domain),
         fallback=not args.no_fallback,
+        structured=not args.no_structured,
+        notes_dir=args.notes,
     )
     if args.log:
         args.log.parent.mkdir(parents=True, exist_ok=True)
     log = args.log.open("w", encoding="utf-8") if args.log else None
     events = EventLog.open(args.events) if args.events else None
     try:
-        term = Terminal(args.debug, log)
-        client: AsyncToolStreamingChatClient = ollama.AsyncClient(host=args.host)
+        term = Terminal(args.debug, log, yes=args.yes)
+        real = ollama.AsyncClient(host=args.host)
+        client: AsyncToolStreamingChatClient = real
         if args.fault and args.fault != "tool-crash":
             fault: Fault = args.fault
             client = FaultyClient(client, fault, store.names())
-        session = Session(store, client, term, settings, events=events)
+        structured: AsyncStructuredClient = real  # итог — мимо инъектора потоков
+        if args.fault == "bad-sources":
+            structured = BadSourcesClient(real)
+        session = Session(
+            store,
+            client,
+            term,
+            settings,
+            events=events,
+            structured=structured,
+            confirm=term.confirm,
+        )
         term.line(
             f"docqa: {len(store.names())} документов в {args.docs}; модель {settings.model}; "
             f"промпт {session.prompt.name} v{session.prompt.version}"

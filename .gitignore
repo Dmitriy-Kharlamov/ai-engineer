@@ -25,3 +25,6 @@ htmlcov/
 
 # Ф4-08: копии папки с инъекцией пересоздаются скриптами
 /week-04/checkpoint/out/attack_*/
+# docqa: заметки save_note по умолчанию пишутся в ./notes
+/notes/
+/week-04/checkpoint/out/notes/

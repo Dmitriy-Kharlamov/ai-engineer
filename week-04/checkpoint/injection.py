@@ -259,7 +259,9 @@ async def one(folder: Path, variant: str, seed: int, cell: Cell, args: argparse.
             quarantine=defended,
             redact_addresses=defended,
             fallback=not args.no_fallback,
+            structured=not args.no_structured,
         ),
+        structured=real,
     )
     cell.runs += 1
     try:
@@ -295,6 +297,9 @@ def main() -> int:
     parser.add_argument("--mode", choices=["natural", "forced"], default="forced")
     parser.add_argument("--variants", default=",".join(VARIANTS), help="через запятую")
     parser.add_argument("--no-fallback", action="store_true")
+    parser.add_argument(
+        "--no-structured", action="store_true", help="как прогоны 1–4: итог — свободный текст"
+    )
     args = parser.parse_args()
     variants = [v.strip() for v in args.variants.split(",")]
     print(

@@ -91,7 +91,8 @@ def commit() -> str:
 
 async def run_mode(mode: HistoryMode) -> tuple[int, int, int]:
     session = Session(DocumentStore(DOCS), ollama.AsyncClient(), Quiet(),
-                      Settings(history_mode=mode))  # fmt: skip
+                      # как в присесте 1: без итога-объекта и без подстраховки
+                      Settings(history_mode=mode, structured=False, fallback=False))  # fmt: skip
     right = found = prompt = 0
     for turn, (question, fact, where) in enumerate(QUESTIONS, start=1):
         try:

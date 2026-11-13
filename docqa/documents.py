@@ -27,6 +27,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from ragkit.tools import PublicToolError, ToolRegistry
 
 from .guards import quarantine as clean_text
+from .notes import NoteStore, SaveNoteArgs
 
 SUFFIXES = (".md", ".txt")
 MAX_HITS = 5
@@ -140,8 +141,9 @@ class NoArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-def build_registry(store: DocumentStore) -> ToolRegistry:
-    """Реестр трёх читающих инструментов над папкой. Схемы аргументов — pydantic."""
+def build_registry(store: DocumentStore, notes: NoteStore | None = None) -> ToolRegistry:
+    """Реестр трёх читающих инструментов над папкой и, если дана папка заметок, save_note.
+    Схемы аргументов — pydantic."""
     registry = ToolRegistry()
 
     @registry.tool(NoArgs, name="list_documents")
@@ -158,5 +160,14 @@ def build_registry(store: DocumentStore) -> ToolRegistry:
     def _read(args: ReadArgs) -> dict[str, Any]:
         """Текст документа по имени файла. Длинный документ приходит урезанным по абзацам."""
         return store.read(args.name)
+
+    if notes is not None:
+
+        @registry.tool(SaveNoteArgs, name="save_note")
+        def _save(args: SaveNoteArgs) -> dict[str, Any]:
+            """Сохранить заметку в папку заметок пользователя. Только когда пользователь сам
+            попросил что-то сохранить или записать. Пользователь подтверждает запись; если
+            не подтвердил — заметки нет, скажи об этом."""
+            return notes.save(args)
 
     return registry

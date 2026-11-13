@@ -3,7 +3,8 @@
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Literal
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -125,16 +126,32 @@ class FakeClient:
     sent: list[list[Mapping[str, Any]]] = field(default_factory=list)
     options: list[Mapping[str, Any] | None] = field(default_factory=list)
     closed: list[bool] = field(default_factory=list)
+    finals: list[str | Exception] = field(default_factory=list)  # итоги со схемой, по порядку
+    final_sent: list[list[Mapping[str, Any]]] = field(default_factory=list)
+    final_options: list[Mapping[str, Any] | None] = field(default_factory=list)
 
     async def chat(
         self,
         *,
         model: str,
         messages: Sequence[Mapping[str, Any]],
-        tools: Sequence[Mapping[str, Any]],
+        tools: Sequence[Mapping[str, Any]] = (),
         options: Mapping[str, Any] | None = None,
-        stream: Literal[True],
-    ) -> AsyncIterator[StreamChunk]:
+        stream: bool = True,
+        format: Any = None,  # noqa: A002 — имя параметра у ollama
+    ) -> Any:
+        if not stream:  # итоговое обращение со схемой
+            self.final_sent.append(list(messages))
+            self.final_options.append(options)
+            item = self.finals[min(len(self.final_sent) - 1, len(self.finals) - 1)]
+            if isinstance(item, Exception):
+                raise item
+            return SimpleNamespace(
+                message=SimpleNamespace(content=item),
+                done_reason="stop",
+                prompt_eval_count=500,
+                eval_count=40,
+            )
         self.sent.append(list(messages))
         self.options.append(options)
         chunks = self.script[min(len(self.sent) - 1, len(self.script) - 1)]
@@ -159,12 +176,15 @@ class Recorder:
     tools: list[ToolResult] = field(default_factory=list)
     lines: list[str] = field(default_factory=list)
     notices: list[str] = field(default_factory=list)
+    order: list[str] = field(default_factory=list)  # «notice»/«delta» по порядку вывода
 
     def notice(self, text: str) -> None:
         self.notices.append(text)
+        self.order.append("notice")
 
     def delta(self, text: str) -> None:
         self.text.append(text)
+        self.order.append("delta")
 
     def tool(self, result: ToolResult) -> None:
         self.tools.append(result)
@@ -177,6 +197,7 @@ def session(client: FakeClient, **settings: Any) -> tuple[Session, Recorder]:
     """Сессия для тестов присеста 1: подстраховка выключена — её тесты в test_docqa_failures."""
     out = Recorder()
     settings.setdefault("fallback", False)
+    settings.setdefault("structured", False)
     return Session(DocumentStore(SAMPLE), client, out, Settings(**settings)), out
 
 

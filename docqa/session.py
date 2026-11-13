@@ -42,6 +42,10 @@
   «прочитай» (прогон 2) сработала в 3 из 20 случаев и дала 9 пустых ответов;
 * пустой ответ — EmptyAnswerError, а не пустая строка «модель>».
 
+Присест 3: итог хода — объект DocAnswer (docqa.answer): черновик модели не показывается,
+итоговое обращение идёт со схемой, код проверяет источники до показа и пишет найденное
+строками notice перед ответом. save_note — за подтверждением (docqa.notes).
+
 Что видит пользователь при каждом отказе — решает CLI, а не модель.
 """
 
@@ -50,6 +54,7 @@ import json
 import random
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import ollama
@@ -67,9 +72,11 @@ from ragkit.prompts import Prompt
 from ragkit.streaming import (
     AsyncChatStream,
     AsyncToolStreamingChatClient,
+    DeadlineExceeded,
     StreamTimeouts,
     astream_tool_chat,
 )
+from ragkit.structured import AsyncStructuredClient, aask_structured
 from ragkit.tools import (
     IterationLimitError,
     Step,
@@ -82,9 +89,11 @@ from ragkit.tools import (
 )
 from services.http_retry import RETRY_STATUSES, RetryPolicy, backoff
 
+from .answer import DocAnswer, Issue, check_answer, instruction, valid_sources
 from .documents import DocumentStore, build_registry
 from .events import Events, NoEvents, clip
-from .guards import AnswerFilter
+from .guards import AnswerFilter, DomainRedactor
+from .notes import Confirm, NoteRequest, NoteStore
 
 Msg = Mapping[str, Any]
 HistoryMode = Literal["full", "stubs", "answers"]
@@ -133,9 +142,11 @@ PRICE = Price(
 # Худший замеренный курс 1,65 символа на токен (Ф4-02) × 0,9 и база 30 токенов на разметку
 # шаблона: на 16 замерах из tests/fixtures/token_counts.json оценка не ниже факта (Ф4-07).
 ESTIMATOR = CharRatioEstimate(chars_per_token=1.49, per_message=5, base=30)
-# Повтор при 429/503: 4 попытки, пауза — случайная в [0, 1·2^(n−1)] с, не больше 8 с.
-# Полный джиттер: в Ф4-07 он разнёс одновременных клиентов лучше аддитивного.
-RETRY = RetryPolicy(attempts=4, base=1.0, cap=8.0, jitter_mode="full")
+# Повтор при 429/503: 4 попытки, пауза 1·2^(n−1) с (не больше 8) плюс случайные 0–0,5 с.
+# Аддитивный джиттер, а не полный: в буре Ф4-07 (20 клиентов, 3 seed) аддитивный дал
+# 30 отказов и 4,71 с, полный — 42 и 5,87 с (3,7–9,3 по seed); пик повторов у обоих 5.
+# До присеста 3 здесь стоял полный — по неверно прочитанному выводу Ф4-07.
+RETRY = RetryPolicy(attempts=4, base=1.0, cap=8.0, jitter=0.5, jitter_mode="additive")
 
 
 @dataclass(frozen=True)
@@ -157,6 +168,8 @@ class Settings:
     redact_addresses: bool = True  # чужие адреса не доходят до пользователя
     allowed_domains: tuple[str, ...] = ()
     fallback: bool = True  # ответ без чтения не показывать: код сам ищет и читает
+    structured: bool = True  # итог — DocAnswer через ragkit.structured, с проверкой источников
+    notes_dir: Path | None = None  # папка заметок; None — save_note нет
     retry: RetryPolicy = field(default_factory=lambda: RETRY)
 
     @property
@@ -248,6 +261,10 @@ class TurnReport:
     removed_addresses: list[str] = field(default_factory=list)
     quarantined: dict[str, list[str]] = field(default_factory=dict)
     hidden_answer: str | None = None  # ответ без чтения, который код не показал
+    draft: str | None = None  # свободный ответ модели, заменённый структурированным
+    structured: DocAnswer | None = None
+    issues: list[Issue] = field(default_factory=list)
+    script_retry: bool = False  # итог переспрошен из-за смеси письменностей
 
     @property
     def calls(self) -> tuple[ToolResult, ...]:
@@ -262,6 +279,33 @@ class TurnReport:
             if r.ok and r.tool_name == "read_document" and name and name not in names:
                 names.append(str(name))
         return names
+
+    @property
+    def notes_saved(self) -> list[str]:
+        return [
+            str((r.arguments or {}).get("title", ""))
+            for r in self.calls
+            if r.ok and r.tool_name == "save_note"
+        ]
+
+    @property
+    def read_failed(self) -> list[str]:
+        """Документы, чтение которых упало (не «нет такого» — тот отказ из белого списка)."""
+        names: list[str] = []
+        for r in self.calls:
+            name = str(
+                (r.arguments or {}).get("name") or (r.requested_arguments or {}).get("name") or ""
+            )
+            if r.tool_name == "read_document" and r.kind == "failed" and name and name not in names:
+                names.append(name)
+        return names
+
+    @property
+    def sources(self) -> list[str]:
+        """Источники итогового ответа, прошедшие проверку: есть в папке и прочитаны в ходе."""
+        if self.structured is None:
+            return []
+        return valid_sources(self.structured, self.documents_read)
 
     @property
     def fell_back(self) -> bool:
@@ -300,16 +344,27 @@ class Session:
         events: Events | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         rng: Callable[[], float] = random.random,
+        structured: AsyncStructuredClient | None = None,
+        confirm: Confirm | None = None,
     ) -> None:
         self.settings = settings or Settings()
+        if self.settings.structured and structured is None:
+            raise ValueError("settings.structured=True: нужен structured — клиент без потока")
         self.store = store
         self.client = client
+        self.structured_client = structured
         self.out = out
         self.events: Events = events or NoEvents()
         self.sleep = sleep
         self.rng = rng
         self.prompt = PROMPTS[self.settings.prompt]
-        self.registry = build_registry(store)
+        # без confirm запись не подтверждается никогда: безопасное значение по умолчанию
+        self.notes = (
+            NoteStore(self.settings.notes_dir, confirm or _deny)
+            if self.settings.notes_dir is not None
+            else None
+        )
+        self.registry = build_registry(store, self.notes)
         self.schemas = self.registry.schemas()
         schema_text = json.dumps(self.schemas, ensure_ascii=False)
         self.tools_tokens = ESTIMATOR([{"role": "system", "content": schema_text}])
@@ -466,36 +521,11 @@ class Session:
         repeat_rounds = 0
         for number in range(1, s.max_iterations + 1):
             messages = [*sent, *produced]
-            input_tokens = self.counter(messages) + self.tools_tokens
-            source = self.counter.source
-            # оба порога — ДО отправки
-            estimate = self.guard.check_tokens(input_tokens, max_output_tokens=s.num_predict)
-            if s.session_limit_usd is not None and (
-                self.spent_usd + estimate.cost > s.session_limit_usd
-            ):
-                raise SessionBudgetError(self.spent_usd, estimate, s.session_limit_usd)
-            if input_tokens > s.window:
-                raise BudgetExceededError(
-                    f"ход {turn}, обращение {number}: вход {input_tokens} токенов ({source}) "
-                    f"при окне {s.window} (num_ctx {s.num_ctx} − num_predict {s.num_predict}); "
-                    f"сообщений {len(messages)}"
-                )
-            self.events.emit(
-                "request",
-                turn=turn,
-                request=number,
-                messages=len(messages),
-                input_tokens=input_tokens,
-                source=source,
-                max_cost_usd=round(estimate.cost, 6),
-            )
-            self.out.debug(
-                f"ход {turn}, обращение {number}: {len(messages)} сообщений, вход "
-                f"{input_tokens} ток. ({source}; окно ≤ {s.window}), цена ≤ "
-                f"{estimate.cost:.5f} $ (порог {s.limit_usd})"
-            )
-            # пока в ходе ничего не прочитано, ответ придерживается: вдруг он без чтения
-            live = not s.fallback or report.fell_back or bool(report.documents_read)
+            input_tokens, source, estimate = self._check_request(messages, turn, number)
+            # ответ придерживается: при structured — всегда (его заменит итог), иначе — пока
+            # в ходе ничего не прочитано и не сохранено (вдруг он без опоры)
+            grounded = bool(report.documents_read or report.notes_saved)
+            live = not s.structured and (not s.fallback or report.fell_back or grounded)
             got = await self._request(messages, turn, number, live=live)
             stream, answer_filter = got.stream, got.filter
             envelope = stream.envelope
@@ -564,10 +594,15 @@ class Session:
                 f"вызовов {len(calls)}"
             )
             # чтение уже падало (03): подстраховка упрётся в то же падение — без неё
-            crashed = any(
-                r.tool_name == "read_document" and r.kind == "failed" for r in report.calls
+            # и после попытки сохранить: ход был о заметке, искать по нему документ незачем
+            needs_fallback = (
+                s.fallback
+                and not report.fell_back
+                and not (report.documents_read or report.notes_saved)
+                and not report.read_failed
+                and not any(r.tool_name == "save_note" for r in report.calls)
             )
-            if not calls and not answer_filter.live and not crashed:  # ничего не прочитано
+            if not calls and needs_fallback:  # ничего не прочитано
                 report.hidden_answer = answer_filter.shown
                 self.events.emit(
                     "fallback", turn=turn, request=number, hidden_answer=clip(answer_filter.raw)
@@ -579,6 +614,10 @@ class Session:
                 self.counter.observe(messages, envelope.prompt_eval_count)
                 self._fallback(turn, number, question, loop, produced, report)
                 continue
+            if not calls and s.structured:
+                report.draft = answer_filter.raw
+                self.events.emit("draft", turn=turn, request=number, text=clip(answer_filter.raw))
+                return await self._final(turn, number, sent, produced, report, messages, envelope)
             if not calls:
                 answer_filter.release()  # придержанный ответ после поиска — показать целиком
                 report = self._finish(turn, sent, produced, report, answer_filter)
@@ -620,6 +659,172 @@ class Session:
             f"ход {turn}: модель просит инструменты после {s.max_iterations} обращений",
             steps=steps,
             messages=[*sent, *produced],
+        )
+
+    def _check_request(
+        self, messages: Sequence[Msg], turn: int, number: int | str
+    ) -> tuple[int, str, CostEstimate]:
+        """Окно, порог обращения и бюджет сессии — ДО отправки. Отказ — исключение."""
+        s = self.settings
+        input_tokens = self.counter(messages) + self.tools_tokens
+        source = self.counter.source
+        estimate = self.guard.check_tokens(input_tokens, max_output_tokens=s.num_predict)
+        if s.session_limit_usd is not None and (
+            self.spent_usd + estimate.cost > s.session_limit_usd
+        ):
+            raise SessionBudgetError(self.spent_usd, estimate, s.session_limit_usd)
+        if input_tokens > s.window:
+            raise BudgetExceededError(
+                f"ход {turn}, обращение {number}: вход {input_tokens} токенов ({source}) "
+                f"при окне {s.window} (num_ctx {s.num_ctx} − num_predict {s.num_predict}); "
+                f"сообщений {len(messages)}"
+            )
+        self.events.emit(
+            "request",
+            turn=turn,
+            request=number,
+            messages=len(messages),
+            input_tokens=input_tokens,
+            source=source,
+            max_cost_usd=round(estimate.cost, 6),
+        )
+        self.out.debug(
+            f"ход {turn}, обращение {number}: {len(messages)} сообщений, вход "
+            f"{input_tokens} ток. ({source}; окно ≤ {s.window}), цена ≤ "
+            f"{estimate.cost:.5f} $ (порог {s.limit_usd})"
+        )
+        return input_tokens, source, estimate
+
+    async def _structured(
+        self, messages: Sequence[Msg], turn: int, options: Mapping[str, Any]
+    ) -> tuple[DocAnswer, Any]:
+        """Итоговое обращение со схемой: те же повторы 429/503 и общий таймаут потока."""
+        assert self.structured_client is not None
+        s = self.settings
+        waited = 0.0
+        for attempt in range(1, s.retry.attempts + 1):
+            try:
+                return await asyncio.wait_for(
+                    aask_structured(self.structured_client, s.model, messages, DocAnswer, options),
+                    timeout=s.timeouts.total,
+                )
+            except ollama.ResponseError as error:
+                if error.status_code not in RETRY_STATUSES:
+                    raise
+                if attempt == s.retry.attempts:
+                    raise ServerBusyError(
+                        error.status_code, attempt, waited, error.error
+                    ) from error
+                pause = backoff(s.retry, attempt, self.rng)
+                waited += pause
+                self.events.emit(
+                    "retry", turn=turn, request="итог", status=error.status_code, attempt=attempt,
+                    pause_s=round(pause, 2), error=error.error,
+                )  # fmt: skip
+                self.out.notice(
+                    f"сервер модели ответил {error.status_code}; попытка {attempt + 1} из "
+                    f"{s.retry.attempts} через {pause:.1f} с"
+                )
+                await self.sleep(pause)
+            except TimeoutError:
+                limit = s.timeouts.total or 0.0
+                raise DeadlineExceeded(
+                    "итоговый ответ не уложился в срок", limit, limit, ""
+                ) from None
+        raise AssertionError("недостижимо")  # pragma: no cover
+
+    async def _final(
+        self,
+        turn: int,
+        number: int,
+        sent: Sequence[Msg],
+        produced: list[dict[str, Any]],
+        report: TurnReport,
+        last_messages: Sequence[Msg],
+        last_envelope: Any,
+    ) -> TurnReport:
+        """Черновик заменён итогом DocAnswer; код проверяет его до показа."""
+        s = self.settings
+        note = {
+            "role": "user",
+            "content": instruction(report.documents_read, report.read_failed, report.notes_saved),
+        }
+        messages = [*sent, *produced, note]  # note — только в этом обращении, не в истории
+        self._check_request(messages, turn, "итог")
+        answer, reply = await self._structured(messages, turn, s.options)
+        self._spend(reply)
+        issues = self._issues(answer, report)
+        if any(i.kind == "script" for i in issues):
+            # Ф4-02: смесь письменностей уходила при repeat_penalty 1.0 (6 слов и 5 иероглифов
+            # при 1.8 → 1 и 0). Один повтор без штрафа и без случайности.
+            report.script_retry = True
+            self.events.emit("script_retry", turn=turn, issues=[i.text for i in issues])
+            self._check_request(messages, turn, "итог, повтор")
+            retry_options = {**s.options, "temperature": 0.0, "repeat_penalty": 1.0}
+            answer, reply = await self._structured(messages, turn, retry_options)
+            self._spend(reply)
+            issues = self._issues(answer, report)
+        report.structured = answer
+        report.issues = issues
+        self.events.emit(
+            "answer",
+            turn=turn,
+            sources=answer.sources,
+            not_found=answer.not_found,
+            issues=[i.kind for i in issues],
+            prompt_eval_count=getattr(reply, "prompt_eval_count", None),
+            eval_count=getattr(reply, "eval_count", None),
+        )
+        # правда кода — ДО ответа модели: что не выполнено и что в ответе не так
+        for r in report.not_done:
+            self.out.notice(f"не выполнено: {r.requested} — {not_done_text(r)}")
+        for issue in issues:
+            self.out.notice(issue.text)
+        text = answer.answer.strip()
+        if s.redact_addresses:
+            redactor = DomainRedactor(lambda _: None, s.allowed_domains, self.store.names())
+            text = redactor.clean(text)
+            report.removed_addresses = list(redactor.removed)
+            if redactor.removed:
+                self.events.emit("redacted", turn=turn, addresses=redactor.removed)
+                self.out.notice(
+                    "код вырезал из ответа адрес(а), которых нет в списке разрешённых: "
+                    + ", ".join(sorted(set(redactor.removed)))
+                )
+        report.answer = report.raw_answer = text
+        report.raw_answer = answer.answer
+        self.out.delta(text)
+        produced.append({"role": "assistant", "content": text})
+        validate_tool_results([*sent, *produced])
+        self.conversation.commit_turn(
+            sent,
+            for_history(produced, s.history_mode),
+            prompt_eval_count=report.prompt_tokens,
+            prompt_eval_ms=sum(i.prompt_ms for i in report.iterations),
+            eval_count=report.output_tokens,
+        )
+        self.counter.observe(
+            last_messages,
+            last_envelope.prompt_eval_count,
+            int(getattr(reply, "eval_count", 0) or 0),
+            produced[-1],
+        )
+        self.turns.append(report)
+        return report
+
+    def _issues(self, answer: DocAnswer, report: TurnReport) -> list[Issue]:
+        return check_answer(
+            answer,
+            existing=self.store.names(),
+            read=report.documents_read,
+            failed=report.read_failed,
+            acted=bool(report.notes_saved),
+        )
+
+    def _spend(self, reply: Any) -> None:
+        self.spent_usd += PRICE.cost(
+            int(getattr(reply, "prompt_eval_count", 0) or 0),
+            int(getattr(reply, "eval_count", 0) or 0),
         )
 
     def _fallback(
@@ -733,3 +938,19 @@ def for_history(produced: Sequence[Mapping[str, Any]], mode: HistoryMode) -> lis
         else:
             out.append(m)
     return out
+
+
+def _deny(request: NoteRequest) -> bool:
+    """Подтверждение по умолчанию — «нет»: без явного согласия файла нет."""
+    return False
+
+
+def not_done_text(result: ToolResult) -> str:
+    """Почему вызов не выполнен — словами для пользователя, а не текстом для модели."""
+    if result.detail.startswith("NotConfirmedError"):
+        return "заметка не сохранена: нет подтверждения"
+    return {
+        "unknown": "такого инструмента нет",
+        "invalid": "аргументы не прошли проверку",
+        "failed": "инструмент не смог выполнить",
+    }.get(result.kind, result.kind)

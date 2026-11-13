@@ -1,9 +1,0 @@
-docqa: 6 документов в /Users/dmitriykharlamov/Desktop/ai-engineer/docqa/sample_docs; модель qwen2.5:7b; промпт docqa v1; ОТКАЗ limit: каждое обращение: search_documents с новым запросом — без повторов
-
-вы> Сколько стоит доставка курьером?
-  · search_documents(query='доставка вариант 1') → ok, 940 симв. модели
-  · search_documents(query='доставка вариант 2') → ok, 940 симв. модели
-  · search_documents(query='доставка вариант 3') → ok, 940 симв. модели
-  · search_documents(query='доставка вариант 4') → ok, 940 симв. модели
-  · search_documents(query='доставка вариант 5') → ok, 940 симв. модели
-[ответа нет] модель не закончила за отведённое число обращений: ход 1: модель просит инструменты после 5 обращений

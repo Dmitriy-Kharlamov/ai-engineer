@@ -158,3 +158,34 @@ def test_nested_objects_inside_item_are_not_items() -> None:
     parser = ArrayItemParser()
     items = parser.feed('{"books": [{"title": "А", "meta": {"pages": 10}}]}')
     assert items == [{"title": "А", "meta": {"pages": 10}}]
+
+
+# ---------------------------------------------------------------------------
+# Асинхронный вариант (Ф4-08)
+# ---------------------------------------------------------------------------
+async def test_aask_structured_sends_schema_and_returns_reply() -> None:
+    from types import SimpleNamespace
+
+    from ragkit.structured import aask_structured
+
+    seen: dict[str, Any] = {}
+
+    class Client:
+        async def chat(
+            self,
+            *,
+            model: str,
+            messages: Sequence[Mapping[str, Any]],
+            options: Mapping[str, Any] | None = None,
+            format: dict[str, Any] | Literal["json"],  # noqa: A002
+            stream: Literal[False] = False,
+        ) -> ChatReply:
+            seen.update(format=format, stream=stream)
+            content = json.dumps({"name": "Анна", "city": "Казань", "age": 30})
+            return SimpleNamespace(
+                message=SimpleNamespace(content=content), done_reason="stop", eval_count=9
+            )
+
+    person, reply = await aask_structured(Client(), "m", [], Person)
+    assert person.city == "Казань" and seen["stream"] is False
+    assert seen["format"] == Person.model_json_schema() and reply.eval_count == 9  # type: ignore[attr-defined]

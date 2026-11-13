@@ -14,6 +14,7 @@ message.tool_calls, done, done_reason, счётчики), и ошибка сер
 """
 
 import asyncio
+import json
 from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -21,7 +22,9 @@ from typing import Any, Literal
 
 import ollama
 
+from ragkit.llm import ChatReply
 from ragkit.streaming import AsyncToolStreamingChatClient, StreamChunk
+from ragkit.structured import AsyncStructuredClient
 
 from .documents import DocumentStore
 
@@ -42,6 +45,9 @@ FAULTS: dict[str, str] = {
     "busy-503": "первые 2 обращения: 503 server busy, потом нормально",
     "busy-429": "первые 2 обращения: 429, потом нормально",
     "busy-forever": "каждое обращение: 503 server busy",
+    "bad-sources": "итоговый ответ: к источникам добавлены laundry.md (нет в папке) и "
+    "returns.md (не прочитан)",
+    "save-note": "1-е обращение: модель зовёт save_note — проверка подтверждения",
 }
 Fault = Literal[
     "unknown-tool",
@@ -60,6 +66,8 @@ Fault = Literal[
     "busy-503",
     "busy-429",
     "busy-forever",
+    "bad-sources",
+    "save-note",
 ]
 BUSY = "server busy, please try again.  maximum pending requests exceeded"
 CUT_AFTER = 6
@@ -159,6 +167,13 @@ class FaultyClient:
             return _text("<tool_call>\n", '{"name": "read_document", "argum')
         if f == "raw-call-bare" and n == 1:
             return _text("search_", 'documents {"query": ', '"доставка курьер"}')
+        if f == "save-note" and n == 1:
+            return _calls(
+                (
+                    "save_note",
+                    {"title": "Доставка курьером", "text": "Курьер по Казани — 290 ₽, 1–2 дня."},
+                )
+            )
         if f == "loop":
             return _calls(("list_documents", {}))
         if f == "limit":
@@ -251,4 +266,48 @@ class FirstCallClient:
             return _replay(_calls(self.call))
         return await self.inner.chat(
             model=model, messages=messages, tools=tools, options=options, stream=True
+        )
+
+
+@dataclass
+class _Reply:
+    message: _Msg
+    done_reason: str | None
+    prompt_eval_count: int | None
+    eval_count: int | None
+
+
+class BadSourcesClient:
+    """Итоговый ответ настоящей модели, но к sources дописаны несуществующий и непрочитанный
+    документы — так, как это делала модель в injection_natural.txt («…undry.md»)."""
+
+    EXTRA = ("laundry.md", "returns.md")
+
+    def __init__(self, inner: AsyncStructuredClient) -> None:
+        self.inner = inner
+
+    async def chat(
+        self,
+        *,
+        model: str,
+        messages: Sequence[Mapping[str, Any]],
+        options: Mapping[str, Any] | None = None,
+        format: dict[str, Any] | Literal["json"],  # noqa: A002 — имя параметра у ollama
+        stream: Literal[False] = False,
+    ) -> ChatReply:
+        reply = await self.inner.chat(
+            model=model, messages=messages, options=options, format=format, stream=False
+        )
+        content = reply.message.content or ""
+        try:
+            data = json.loads(content)
+            data["sources"] = [*data.get("sources", []), *self.EXTRA]
+            content = json.dumps(data, ensure_ascii=False)
+        except (json.JSONDecodeError, AttributeError):
+            pass  # не JSON — пусть разбор откажет сам, как откажет и без подмены
+        return _Reply(
+            _Msg(content),
+            reply.done_reason,
+            getattr(reply, "prompt_eval_count", None),
+            getattr(reply, "eval_count", None),
         )

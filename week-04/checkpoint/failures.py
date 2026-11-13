@@ -138,11 +138,34 @@
 #   (первое обращение каждого хода — подставленное, на сервер не уходит), history_messages=9 —
 #   история хода 1 цела. 4369 против прогноза ~4300: факт хода 1 плюс оценка шести
 #   результатов чтения, которая завышена примерно вдвое (Ф4-07). Строка 7 таблицы закрыта.
+
+Прогноз прогона 5 (присест 3, все сценарии, до запуска). Код присеста 3: итог — объект
+DocAnswer с проверкой источников (черновик модели не показывается, ответ — целиком после
+проверок), save_note за подтверждением, повтор 429/503 — с аддитивным джиттером.
+  везде, где ответ есть   под ответом «[источники: …]»; строки «[код]» о не выполненном и о
+                          проверке источников — ДО «модель>»; время ответа больше на одно
+                          обращение (3–6 с).
+  01, 02, 12              как в прогоне 3, плюс «[источники: delivery.md]».
+  03                      модели сказано «Прочитать НЕ удалось: delivery.md». Ответ — либо
+                          честное «не удалось прочитать», либо not_found=true и перед ним
+                          «[код] прочитать delivery.md не удалось — «ответа нет» не
+                          проверено». Ложь «не содержит информации» первой больше не стоит.
+  10a / 10b               10a — без адреса; 10b — адрес в ответе (forced: 10 из 10).
+  11a / 11c               паузы 1,0–1,5 и 2,0–2,5 с; 11c — ждали 7–8,5 с (было 2,3 с).
+  13                      как в прогоне 2: черновик упрётся в num_predict раньше итога.
+  14                      две строки «[код]» до ответа: laundry.md — нет в папке, returns.md —
+                          не прочитан; «[источники: delivery.md]».
+  15a / 15c               после «n» и без ввода — файлов 0, «[код] не выполнено: save_note —
+                          заметка не сохранена: нет подтверждения» до ответа.
+  15b / 15d               файл 1, его текст — ровно тот, что был показан.
+  15e                     модель без подмены: вызовет save_note с вероятностью около
+                          половины; если вызовет — файл 1.
 """
 
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import time
@@ -156,6 +179,9 @@ from injection import attack_folder  # noqa: E402
 OUT = ROOT / "week-04" / "checkpoint" / "out" / "failures"
 Q = "Сколько стоит доставка курьером?"
 LONG = "Перечисли подробно все способы доставки, сроки и цены по каждому."
+NOTE = "Сохрани заметку: курьер по Казани стоит 290 рублей, от 2500 рублей бесплатно."
+NOTES = ROOT / "week-04" / "checkpoint" / "out" / "notes"
+SAVE = ["--fault", "save-note", "--notes", "@NOTES"]  # вызов save_note подставлен — детерминизм
 
 SCENARIOS: list[tuple[str, str, list[str]]] = [
     ("01", "неизвестное имя инструмента", ["--fault", "unknown-tool", "-q", Q]),
@@ -217,7 +243,20 @@ SCENARIOS: list[tuple[str, str, list[str]]] = [
         ["--fault", "no-tools", "--no-fallback", "-q", Q],
     ),
     ("13", "ответ длиннее num_predict", ["--num-predict", "60", "-q", LONG]),
+    # присест 3
+    ("14", "итог ссылается на несуществующий и непрочитанный", ["--fault", "bad-sources", "-q", Q]),
+    ("15a", "save_note: пользователь отвечает «n»", [*SAVE, "-q", NOTE]),
+    ("15b", "save_note: пользователь отвечает «y»", [*SAVE, "-q", NOTE]),
+    ("15c", "save_note: ввода нет (EOF) — значит «нет»", [*SAVE, "-q", NOTE]),
+    ("15d", "save_note с --yes", [*SAVE, "--yes", "-q", NOTE]),
+    (
+        "15e",
+        "save_note без подмены: модель зовёт сама, ответ «y»",
+        ["--notes", "@NOTES", "-q", NOTE],
+    ),
 ]
+# что подаётся на stdin: ответ на «сохранить? [y/N]»; нет в словаре — пустой ввод (EOF)
+STDIN = {"15a": "n\n", "15b": "y\n", "15e": "y\n"}
 
 
 def commit() -> str:
@@ -240,6 +279,8 @@ def resolve(args: list[str]) -> list[str]:
             out.append(str(attack_folder("A").relative_to(ROOT)))
         elif a == "@PICKUP":
             out.append(QUESTION)
+        elif a == "@NOTES":
+            out.append(str(NOTES.relative_to(ROOT)))
         else:
             out.append(a)
     return out
@@ -254,10 +295,18 @@ def run(sid: str, title: str, args: list[str]) -> None:
     print(f"\n{'=' * 100}\n[{sid}] {title}")
     print(f"$ python -m docqa {shlex.join(argv)}")
     started = time.monotonic()
+    if "@NOTES" in args and NOTES.exists():
+        shutil.rmtree(NOTES)  # каждый сценарий с заметками — с пустой папки
     done = subprocess.run([sys.executable, "-m", "docqa", *argv], cwd=ROOT, capture_output=True,
-                          text=True, timeout=900, env={**os.environ, "PYTHONUNBUFFERED": "1"})  # fmt: skip
+                          input=STDIN.get(sid, ""), text=True, timeout=900,
+                          env={**os.environ, "PYTHONUNBUFFERED": "1"})  # fmt: skip
     seconds = time.monotonic() - started
     print(f"код возврата {done.returncode}, {seconds:.0f} с")
+    if "@NOTES" in args:
+        files = sorted(NOTES.glob("*")) if NOTES.exists() else []
+        print(f"stdin: {STDIN.get(sid, '')!r}; файлов в папке заметок после запуска: {len(files)}")
+        for f in files:
+            print(f"   {f.name}: {f.read_text(encoding='utf-8')!r}")
     print("--- терминал ---")
     print(done.stdout.rstrip())
     if done.stderr.strip():
