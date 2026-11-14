@@ -325,6 +325,15 @@ def final_answer_to_390(records: list[dict[str, Any]]) -> str:
     return "итога-объекта в кассете нет"
 
 
+def has_read_call(path: Path) -> bool:
+    for line in path.read_text(encoding="utf-8").splitlines()[1:]:
+        for chunk in json.loads(line).get("stream") or []:
+            for call in chunk.get("message", {}).get("tool_calls") or []:
+                if call["function"]["name"] in ("read_document", "search_documents"):
+                    return True
+    return False
+
+
 def tool_call_to_other_doc(records: list[dict[str, Any]]) -> str:
     for r in records:
         for chunk in r.get("stream") or []:
@@ -334,7 +343,11 @@ def tool_call_to_other_doc(records: list[dict[str, Any]]) -> str:
                     old = args.get("name")
                     args["name"] = "hours.md" if old != "hours.md" else "events.md"
                     return f"вызов read_document(name={old!r}) → name={args['name']!r}"
-    return "вызова read_document в кассете нет"
+                if call["function"]["name"] == "search_documents":
+                    old = args.get("query")
+                    args["query"] = "часы работы магазина"
+                    return f"вызов search_documents(query={old!r}) → query={args['query']!r}"
+    return "вызовов инструментов в кассете нет"
 
 
 def rescore(run: RunResult, out: Path) -> int:
@@ -404,11 +417,21 @@ def task2() -> None:
         shutil.rmtree(edited)
     shutil.copytree(CASSETTES, edited)
     print("      q01: " + edit_cassette(edited / "q01.jsonl", final_answer_to_390))
-    print("      q02: " + edit_cassette(edited / "q02.jsonl", tool_call_to_other_doc))
-    result = run_suite(suite, "replay", only=["q01", "q02"], out=REGRESS / "out" / "edited",
+    # вопрос, где модель сама вызвала инструмент (в q02 читал код-подстраховка — вызова нет)
+    mid = next(
+        (f"q{i:02d}" for i in range(2, 21) if has_read_call(edited / f"q{i:02d}.jsonl")), None
+    )
+    if mid is None:
+        print(
+            "      ни в одной кассете вопросов нет вызова инструмента — вторую подмену не сделать"
+        )
+        mid = "q02"
+    else:
+        print(f"      {mid}: " + edit_cassette(edited / f"{mid}.jsonl", tool_call_to_other_doc))
+    result = run_suite(suite, "replay", only=["q01", mid], out=REGRESS / "out" / "edited",
                        progress=False, cassettes=edited)  # fmt: skip
     before = RunResult("replay", replay.commit, replay.started, replay.fingerprint,
-                       [r for r in replay.items if r.id in ("q01", "q02")])  # fmt: skip
+                       [r for r in replay.items if r.id in ("q01", mid)])  # fmt: skip
     print(
         "      " + compare(suite, before, result, suite_today()).render().replace("\n", "\n      ")
     )
