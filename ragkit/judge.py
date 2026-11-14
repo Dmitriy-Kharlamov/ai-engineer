@@ -120,6 +120,22 @@ FACT_V1: Rubric[BinaryVerdict] = Rubric(
     BinaryVerdict,
     f"{_TASK} Реши, верен ли ответ по документу.\n\n{RULES}\n\n{_BINARY_JSON}",
 )
+# v2 (после Ф5.5-01, задания 1 и 3): ответ-отказ проверяется по документу, а не на слово —
+# fact@v1 пропустил оба ложных «информации нет»; имя файла документа судье известно — fact@v1
+# счёл ошибкой ссылку ответа на delivery.md, «которого не предоставили».
+RULES_V2 = (
+    RULES
+    + """
+Ответ «информации нет» проверяй по документу сам: если ответ на вопрос в документе есть, такой \
+ответ НЕВЕРНЫЙ. Имя файла документа указано в заголовке блока; ссылка ответа на этот файл — не \
+ошибка."""
+)
+FACT_V2: Rubric[BinaryVerdict] = Rubric(
+    "fact",
+    "2",
+    BinaryVerdict,
+    f"{_TASK} Реши, верен ли ответ по документу.\n\n{RULES_V2}\n\n{_BINARY_JSON}",
+)
 FACT_WARNED_V1: Rubric[BinaryVerdict] = Rubric(
     "fact_warned",
     "1",
@@ -166,6 +182,7 @@ CRITERIA_V1: Rubric[CriteriaVerdict] = Rubric(
 )
 RUBRICS: tuple[Rubric[Any], ...] = (
     FACT_V1,
+    FACT_V2,
     FACT_WARNED_V1,
     FACT_ABSTAIN_V1,
     PAIR_V1,
@@ -193,6 +210,7 @@ class Case:
     question: str
     document: str
     answers: tuple[str, ...]
+    document_name: str = ""  # имя файла; пусто — заголовок без имени (как в v1)
 
     def __post_init__(self) -> None:
         if len(self.answers) not in (1, 2):
@@ -219,7 +237,13 @@ def judge_messages(
         answers.append(answer)
     parts = [
         "Вопрос клиента:\n" + block("ВОПРОС", case.question),
-        "Документ магазина:\n" + block("ДОКУМЕНТ", case.document),
+        (
+            f"Документ магазина ({case.document_name}):"
+            if case.document_name
+            else "Документ магазина:"
+        )
+        + "\n"
+        + block("ДОКУМЕНТ", case.document),
     ]
     if len(answers) == 1:
         parts.append("Ответ помощника на проверку:\n" + block("ОТВЕТ", answers[0]))

@@ -13,6 +13,7 @@ from ragkit import quarantine as ragkit_quarantine
 from ragkit.judge import (
     FACT_ABSTAIN_V1,
     FACT_V1,
+    FACT_V2,
     PAIR_V1,
     RUBRICS,
     SCORE_V1,
@@ -177,3 +178,11 @@ def test_abstentions_are_counted_but_not_in_matrix() -> None:
     c = Calibration.of([(True, True), (False, None), (False, False)])
     assert (c.n, c.abstained, c.no_no) == (2, 1, 1)
     assert "не могу судить" in c.summary()
+
+
+def test_document_name_goes_into_header_only_when_given() -> None:
+    plain, _ = judge_messages(FACT_V1, Case("?", DOC, ("290",)))
+    named, _ = judge_messages(FACT_V2, Case("?", DOC, ("290",), document_name="delivery.md"))
+    assert "Документ магазина:\n<<<ДОКУМЕНТ" in plain[-1]["content"]
+    assert "Документ магазина (delivery.md):\n<<<ДОКУМЕНТ" in named[-1]["content"]
+    assert FACT_V2.tag == "fact@v2" and FACT_V2.system != FACT_V1.system
