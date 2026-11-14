@@ -361,3 +361,20 @@ def test_scan_secrets_passes_clean_log() -> None:
 
     clean = '{"event": "tool", "detail": "PermissionError: [Errno 13] Permission denied: a.md"}'
     assert scan_secrets(clean) == []
+
+
+def test_estimate_check_skips_scripted_answers_and_requests_before_a_fact() -> None:
+    from docqa.regress import later_requests_error
+
+    def resp(turn: int, request: int, count: int, error: float) -> dict[str, Any]:
+        return {"event": "response", "turn": turn, "request": request,
+                "prompt_eval_count": count, "estimate_error": error}  # fmt: skip
+
+    events = [
+        resp(1, 1, 0, 1752.0),  # подставлен инъектором: счёт 0
+        resp(1, 2, 900, 1.4),  # первый настоящий ответ хода: факта до него не было
+        resp(1, 3, 1000, 0.2),  # после факта — сюда и смотрим
+        resp(2, 1, 1100, 1.1),  # новый ход: снова без факта
+        resp(2, 2, 1200, 0.9),  # после факта, завышено — проверка должна это увидеть
+    ]
+    assert later_requests_error(events) == [0.2, 0.9]

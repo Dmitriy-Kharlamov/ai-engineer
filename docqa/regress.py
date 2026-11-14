@@ -12,8 +12,9 @@
 
 Каждому пункту добавляются два ожидания для всех:
 * «журнал без сырых ошибок» — ragkit.regress.scan_secrets по журналу событий;
-* «оценка входа от факта ≤ +50 %» — обращения 2+ в ходе (у кода уже есть факт сервера) не
-  завышены больше чем наполовину (поломка Ф4-08, присест 1: чистая оценка — +102…157 %).
+* «оценка входа от факта ≤ +50 %» — обращения хода после первого настоящего ответа (у кода
+  уже есть факт сервера) не завышены больше чем наполовину (поломка Ф4-08, присест 1: чистая
+  оценка — +102…157 %).
 
 Отчёт сравнивает прогон с опорным (regress/reference/<слой>.json): что изменило вердикт,
 метрики против порогов, отпечаток среды, карантин. Код возврата 1 — ворота красные.
@@ -204,21 +205,28 @@ def metric(spec: Mapping[str, Any], seen: Observed) -> bool:
 
 
 def later_requests_error(events: Sequence[Mapping[str, Any]]) -> list[float]:
-    """Завышение оценки входа на обращениях 2+ в ходе — там у кода уже есть факт сервера.
+    """Завышение оценки входа там, где у кода уже был факт сервера: на обращениях хода после
+    первого НАСТОЯЩЕГО ответа (prompt_eval_count > 0).
 
-    Именно «2+», а не «помеченные факт+оценка»: если код перестал брать факт, пометок не
-    будет вовсе, и проверка по пометке молча пройдёт (так и вышло в задании 7 на первой
-    версии этой проверки).
+    Не «помеченные факт+оценка»: если код перестал брать факт, пометок не будет вовсе, и
+    проверка по пометке молча пройдёт (так вышло в задании 7 на первой версии). И не «все
+    обращения 2+»: ответ, подставленный инъектором отказов, факта не несёт (счёт 0), и
+    следующее обращение законно идёт по чистой оценке — так первая живая запись покраснела на
+    12 строках таблицы отказов, где ошибалась проверка, а не код (+112…165 % после подмены,
+    +175 200 % — сам подставленный ответ со счётом 0).
     """
-    responses = {(e.get("turn"), e.get("request")): e for e in events if e["event"] == "response"}
-    return [
-        float(responses[(e["turn"], e["request"])].get("estimate_error", 0.0))
-        for e in events
-        if e["event"] == "request"
-        and isinstance(e.get("request"), int)
-        and e["request"] >= 2
-        and (e["turn"], e["request"]) in responses
-    ]
+    real: set[Any] = set()  # ходы, где уже был настоящий ответ
+    out: list[float] = []
+    for e in events:
+        if e["event"] != "response":
+            continue
+        count = e.get("prompt_eval_count") or 0
+        if count <= 0:
+            continue  # ответ инъектора: факта нет, оценивать нечего
+        if e.get("turn") in real and isinstance(e.get("request"), int):
+            out.append(float(e.get("estimate_error", 0.0)))
+        real.add(e.get("turn"))
+    return out
 
 
 def implicit(seen: Observed, uses_model: bool) -> tuple[dict[str, bool], dict[str, str]]:
@@ -231,7 +239,7 @@ def implicit(seen: Observed, uses_model: bool) -> tuple[dict[str, bool], dict[st
         name = "оценка входа от факта ≤ +50 %"
         checks[name] = all(o <= ESTIMATE_LIMIT for o in over)
         if over:
-            details[name] = f"обращения 2+ в ходе: {min(over):+.0%}…{max(over):+.0%}"
+            details[name] = f"после факта в ходе: {min(over):+.0%}…{max(over):+.0%}"
     return checks, details
 
 
