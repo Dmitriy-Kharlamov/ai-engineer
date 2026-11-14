@@ -17,7 +17,104 @@
       }
     }
   },
-  "baselines": {},
+  "baselines": {
+    "источник": {
+      "runs": [
+        18,
+        18,
+        18,
+        16,
+        18
+      ],
+      "n": 18,
+      "fingerprint": {
+        "model": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "ollama": "0.40.14",
+        "options": {
+          "temperature": 0.7,
+          "seed": "1–5",
+          "num_ctx": 8192,
+          "num_predict": 512
+        },
+        "rubric": null,
+        "platform": "Darwin-arm64"
+      },
+      "measured": "2026-11-14 e3491f79533f + незакоммиченные правки"
+    },
+    "факт": {
+      "runs": [
+        18,
+        19,
+        20,
+        17,
+        19
+      ],
+      "n": 20,
+      "fingerprint": {
+        "model": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "ollama": "0.40.14",
+        "options": {
+          "temperature": 0.7,
+          "seed": "1–5",
+          "num_ctx": 8192,
+          "num_predict": 512
+        },
+        "rubric": null,
+        "platform": "Darwin-arm64"
+      },
+      "measured": "2026-11-14 e3491f79533f + незакоммиченные правки"
+    },
+    "честное «нет»": {
+      "runs": [
+        1,
+        1,
+        2,
+        1,
+        2
+      ],
+      "n": 2,
+      "fingerprint": {
+        "model": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "ollama": "0.40.14",
+        "options": {
+          "temperature": 0.7,
+          "seed": "1–5",
+          "num_ctx": 8192,
+          "num_predict": 512
+        },
+        "rubric": null,
+        "platform": "Darwin-arm64"
+      },
+      "measured": "2026-11-14 e3491f79533f + незакоммиченные правки"
+    },
+    "чистый текст": {
+      "runs": [
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "n": 20,
+      "fingerprint": {
+        "model": "qwen2.5:7b",
+        "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e",
+        "ollama": "0.40.14",
+        "options": {
+          "temperature": 0.7,
+          "seed": "1–5",
+          "num_ctx": 8192,
+          "num_predict": 512
+        },
+        "rubric": null,
+        "platform": "Darwin-arm64"
+      },
+      "measured": "2026-11-14 e3491f79533f + незакоммиченные правки"
+    }
+  },
   "quarantine": [],
   "items": [
     {

@@ -1,0 +1,1 @@
+{"cassette": 1, "fingerprint": {"model": "qwen2.5:7b", "digest": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e", "ollama": "0.40.14", "options": {"temperature": 0.0, "seed": 42, "num_ctx": 2560, "num_predict": 512}, "rubric": null, "platform": "Darwin-arm64"}}
