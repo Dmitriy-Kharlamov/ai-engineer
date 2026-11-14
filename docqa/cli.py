@@ -18,7 +18,7 @@ import argparse
 import asyncio
 import sys
 from pathlib import Path
-from typing import TextIO
+from typing import Any, TextIO
 
 import httpx
 import ollama
@@ -27,6 +27,7 @@ from ragkit.conversation import BrokenHistoryError, BudgetExceededError
 from ragkit.cost import CostLimitExceededError
 from ragkit.exceptions import RAGError
 from ragkit.llm import IncompleteResponseError
+from ragkit.regress import CassetteClient, probe_fingerprint
 from ragkit.streaming import (
     AsyncToolStreamingChatClient,
     StreamTimeout,
@@ -279,6 +280,18 @@ async def run(questions: list[str] | None, session: Session, term: Terminal) -> 
     return 0
 
 
+def _cassette(args: argparse.Namespace, settings: Settings, real: Any) -> CassetteClient:
+    """Кассета поверх настоящего клиента и под инъектором отказов: записывается только то,
+    что ответила модель, а подставленное инъектором подставляется заново при воспроизведении."""
+    if args.cassette_mode == "replay":
+        return CassetteClient(args.cassette, "replay")
+    options = {"temperature": settings.temperature, "seed": settings.seed,
+               "num_ctx": settings.num_ctx, "num_predict": settings.num_predict}  # fmt: skip
+    host = args.host.rstrip("/") if args.host else None
+    fingerprint = probe_fingerprint(settings.model, options, host=host)
+    return CassetteClient(args.cassette, "record", real, fingerprint)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="docqa", description="Вопросы по папке с документами")
     parser.add_argument("--docs", type=Path, default=DEFAULT_DOCS, help="папка с .md и .txt")
@@ -336,6 +349,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="показывать ответ без чтения документов сразу; код сам не ищет и не читает",
     )
+    parser.add_argument(
+        "--cassette",
+        type=Path,
+        help="кассета обращений к модели (Ф5.5-02): запись или воспроизведение — --cassette-mode",
+    )
+    parser.add_argument(
+        "--cassette-mode",
+        choices=["record", "replay"],
+        default="replay",
+        help="record — к модели и на диск; replay — только с диска, модель не нужна",
+    )
     parser.add_argument("-q", "--question", action="append", help="вопрос; можно несколько")
     parser.add_argument("--debug", action="store_true", help="версия промпта, бюджет, токены")
     parser.add_argument("--log", type=Path, help="записать расшифровку сессии в файл")
@@ -371,7 +395,9 @@ def main(argv: list[str] | None = None) -> int:
     events = EventLog.open(args.events) if args.events else None
     try:
         term = Terminal(args.debug, log, yes=args.yes)
-        real = ollama.AsyncClient(host=args.host)
+        real: Any = ollama.AsyncClient(host=args.host)
+        if args.cassette is not None:
+            real = _cassette(args, settings, real)
         client: AsyncToolStreamingChatClient = real
         if args.fault and args.fault != "tool-crash":
             fault: Fault = args.fault

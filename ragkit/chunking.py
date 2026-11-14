@@ -44,21 +44,27 @@ class Chunk:
             "metadata": dict(self.metadata),
         }
 
+    # Ф5.5-02: равенство — по содержимому. До этого __eq__ сравнивал число токенов, и два
+    # разных чанка с одинаковым числом слов были «равны» (Ф2-03): set() и dict склеивали их
+    # в один, а `chunk in chunks` находил чужой. Порядок — по токенам, при равенстве по
+    # источнику и тексту: так __lt__ согласован с __eq__ (total_ordering иначе врёт в <=).
+    def _key(self) -> tuple[int, str, str]:
+        return (self.tokens, self.source, self.text)
+
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, Chunk):
             return NotImplemented
-        return self.tokens < other.tokens
+        return self._key() < other._key()
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Chunk):
             return NotImplemented
-        return self.tokens == other.tokens
+        return (self.text, self.source, self.metadata) == (other.text, other.source, other.metadata)
 
     def __hash__(self) -> int:
-        # Согласован с __eq__: __eq__ сравнивает по числу токенов,
-        # поэтому и хеш считаем по числу токенов — равные чанки дают равный хеш.
-        # Следствие: все чанки с одинаковым числом слов для словаря — один ключ.
-        return hash(self.tokens)
+        # Согласован с __eq__: равные чанки (тот же текст и источник) дают равный хеш;
+        # metadata в хеш не входит — словарь не хешируется, а равенство он только сужает.
+        return hash((self.text, self.source))
 
     def __repr__(self) -> str:
         return f"Chunk(source={self.source!r}, tokens={self.tokens})"

@@ -1,0 +1,70 @@
+# Ночной поток (Ф5.5-02): живая модель на self-hosted раннере — MacBook с ollama, той же средой,
+# где мерилась базовая линия (задание 4). Пороги — по нижней границе интервала базовой линии;
+# весь прогон под бюджетом (CostGuard на прогон: остаток — порог сессии каждого пункта).
+# Падение ночного слияния не блокирует: оно создаёт задачу (issue) с отчётом.
+name: nightly
+
+on:
+  schedule:
+    - cron: "17 0 * * *"  # 03:17 по Москве
+  workflow_dispatch:
+    inputs:
+      seed:
+        description: "seed прогона (по умолчанию — номер дня в году)"
+        required: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  live:
+    runs-on: [self-hosted, macOS, ollama]
+    timeout-minutes: 90
+    env:
+      BUDGET_USD: "1.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: окружение
+        run: |
+          python3 -m venv .ci-venv
+          . .ci-venv/bin/activate
+          pip install -q -e ".[dev]"
+
+      - name: ollama на месте
+        run: |
+          curl -sf http://127.0.0.1:11434/api/version
+          curl -sf http://127.0.0.1:11434/api/tags | grep -q '"qwen2.5:7b"'
+
+      - name: живой слой
+        id: live
+        run: |
+          . .ci-venv/bin/activate
+          SEED="${{ github.event.inputs.seed }}"
+          SEED="${SEED:-$(date +%j | sed 's/^0*//')}"
+          python -u -m docqa.regress --layer live --seed "$SEED" --budget-usd "$BUDGET_USD" \
+            --save regress/out/nightly.json --report regress/out/nightly-report.txt
+
+      - name: отчёт
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-report
+          path: regress/out/
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: задача о падении
+        if: failure() && steps.live.conclusion == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo "Ночной прогон docqa красный: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo
+            echo '```'
+            cat regress/out/nightly-report.txt
+            echo '```'
+          } > issue.md
+          gh issue create --title "Ночной прогон docqa: красный, $(date +%Y-%m-%d)" --body-file issue.md

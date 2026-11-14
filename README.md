@@ -65,3 +65,39 @@ mypy && ruff check .              # строгие типы для ragkit/, api/
 | `POST /documents`, `GET /documents/{id}` | свои документы; чужой — 404 |
 | `/admin/*` | только API-ключ с ролью `admin` (защита на уровне роутера) |
 | `/lab/*` | учебные эндпоинты; есть только при `APP_DEBUG=true` |
+
+## Регрессионный набор и CI (Ф5.5-02)
+
+Набор — `regress/suite.json`: 49 пунктов (q01–q20 — вопросы по `docqa/sample_docs`, 01–15e —
+таблица отказов Ф4-08), базовые линии метрик с отпечатком среды и карантин со сроком. Бегун —
+`python -m docqa.regress`, машинерия — `ragkit/regress.py`.
+
+| слой | что | модель | ворота |
+|---|---|---|---|
+| фейковый клиент | `pytest` | нет | да |
+| кассеты | `python -m docqa.regress --layer replay` | нет: запись в `regress/cassettes/` | да |
+| живая модель | `python -m docqa.regress --layer live --seed N` | да | нет — задача (issue) |
+
+Кассеты перезаписываются, когда меняется запрос к модели (промпт, схема, история):
+`python -m docqa.regress --layer record --accept --save regress/runs/record.json`.
+
+Два потока:
+
+* `.github/workflows/ci.yml` — на каждый push: ruff, слои, mypy, тесты, набор на кассетах (там же
+  проверка журнала на сырые ошибки и срок карантина). Ни одного обращения к модели.
+* `.github/workflows/nightly.yml` — каждую ночь на self-hosted раннере (Mac с ollama, метки
+  `self-hosted, macOS, ollama`): живой слой с порогами по нижней границе, бюджет прогона.
+  Красный — создаётся issue с отчётом. Репозиторий публичный: в Settings → Actions → General
+  включено «Require approval for all outside collaborators», иначе чужой pull request мог бы
+  запустить код на этом Mac.
+
+Карантин: пункт можно убрать из ворот только записью `{"item", "until", "reason"}` в
+`quarantine` набора; после `until` блокирующий поток красный, пока запись не убрана или не
+продлена.
+
+Время и цена потоков (замер — Ф5.5-02, задание 8):
+
+| поток | время | цена |
+|---|---|---|
+| блокирующий (GitHub, ubuntu) | — замер после первого прогона | 0 (публичный репозиторий) |
+| ночной (Mac, qwen2.5:7b) | — замер после первого прогона | — по прайсу CostGuard |

@@ -37,6 +37,7 @@ import json
 import re
 from collections.abc import Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any, ClassVar, Literal, Protocol, TypeVar
 
 from pydantic import BaseModel, ValidationError
@@ -56,6 +57,28 @@ UNKNOWN_TOOL = "unknown"  # tool_name для результата вызова �
 # ---------------------------------------------------------------------------
 # Отказы
 # ---------------------------------------------------------------------------
+
+# Абсолютный путь: «/Users/имя/…/delivery.md» или «C:\\Users\\…» — в нём имя пользователя.
+_ABS_PATH = re.compile(r"(?:[A-Za-z]:\\|/)(?:[^\s'\"/\\]+[/\\])+([^\s'\"/\\]+)")
+
+
+def scrub_paths(text: str) -> str:
+    """Абсолютные пути → «…/имя-файла»: журналу хватит имени, а каталог выдаёт пользователя."""
+    return _ABS_PATH.sub(lambda m: "…/" + m.group(1), text)
+
+
+def safe_detail(error: BaseException) -> str:
+    """Тип и суть исключения для журнала, без сырого текста (Ф5.5-02, остаток Ф3-12).
+
+    str(PermissionError) — это «[Errno 13] Permission denied: '/Users/<имя>/…'»: в журнал
+    уходил абсолютный путь с именем пользователя (Ф4-08, отказ 3).
+    """
+    if isinstance(error, OSError) and error.filename is not None:
+        name = Path(str(error.filename)).name
+        return f"{type(error).__name__}: [Errno {error.errno}] {error.strerror}: {name}"
+    return f"{type(error).__name__}: {scrub_paths(str(error))}"
+
+
 class ToolError(RAGError):
     """Предок трёх отказов диспетчера. В тексте — ни строки вывода модели."""
 
@@ -272,7 +295,8 @@ class ToolRegistry:
                 name,
                 tool_name,
                 f"ошибка: аргументы не прошли проверку — {where}",
-                detail=str(error),
+                # без input_value: аргументы модели дословно в журнал не идут (Ф5.5-02)
+                detail=f"ToolArgumentsError: {where}",
             )
         except ToolFailedError as error:
             public = isinstance(error.original, PublicToolError)
@@ -282,9 +306,8 @@ class ToolRegistry:
                 else "ошибка: инструмент не смог выполнить запрос. Повтор с теми же "
                 "аргументами не поможет."
             )
-            original = error.original
             return ToolResult(
-                "failed", name, tool_name, content, detail=f"{type(original).__name__}: {original}"
+                "failed", name, tool_name, content, detail=safe_detail(error.original)
             )
         content = (
             _render({"аргументы": checked, "результат": result})

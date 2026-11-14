@@ -192,14 +192,16 @@ async def test_unknown_tool_is_reported_beside_the_answer() -> None:
     assert "send_email" not in out.tools[0].content  # имя от модели — не в контекст
 
 
-async def test_tool_crash_detail_goes_to_log_not_to_model(tmp_path: Path) -> None:
+async def test_tool_crash_detail_goes_to_log_without_the_path(tmp_path: Path) -> None:
+    """Ф5.5-02: в журнал — тип и имя файла, без абсолютного пути (в нём имя пользователя)."""
     (tmp_path / "a.md").write_text("текст")
     client = FakeClient([calls(("read_document", {"name": "a.md"})), answer("Не смог прочитать.")])
     s, out, _ = make(client, CrashingStore(tmp_path))
     report = await s.ask("Что в a.md?")
     result = out.tools[0]
     assert result.kind == "failed" and str(tmp_path) not in result.content
-    assert "PermissionError" in result.detail and str(tmp_path) in result.detail
+    assert "PermissionError" in result.detail and "a.md" in result.detail
+    assert str(tmp_path) not in result.detail
     assert report.documents_read == [] and report.not_done == [result]
 
 

@@ -342,3 +342,17 @@ def test_bare_raw_call_needs_known_tool_names() -> None:
         ("list_documents", {}),
     ]
     assert not looks_like_raw_call("инструмент read_document читает файл", names)
+
+
+# ---------------------------------------------------------------------------
+# Ф5.5-02: в журнал — без сырого текста исключения
+# ---------------------------------------------------------------------------
+def test_safe_detail_keeps_type_and_file_name_drops_the_directory() -> None:
+    from ragkit.tools import safe_detail, scrub_paths
+
+    error = PermissionError(13, "Permission denied", "/Users/dmitry/Desktop/docs/delivery.md")
+    assert safe_detail(error) == "PermissionError: [Errno 13] Permission denied: delivery.md"
+    assert scrub_paths("нет файла /home/runner/work/x/notes.md и C:\\Users\\a\\b.txt") == (
+        "нет файла …/notes.md и …/b.txt"
+    )
+    assert safe_detail(ValueError("просто текст")) == "ValueError: просто текст"

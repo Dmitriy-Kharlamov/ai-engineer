@@ -28,3 +28,6 @@ htmlcov/
 # docqa: заметки save_note по умолчанию пишутся в ./notes
 /notes/
 /week-04/checkpoint/out/notes/
+
+# Ф5.5-02: рабочие папки регрессионного набора (журналы, расшифровки, заметки)
+/regress/out/

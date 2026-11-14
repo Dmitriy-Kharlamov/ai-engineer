@@ -1,0 +1,58 @@
+# Блокирующий поток (Ф5.5-02): на каждый push и pull request. Ни одного живого обращения к
+# модели — значит он детерминирован и имеет право запрещать слияние.
+# Порядок — от дешёвого и информативного к дорогому: первым падает то, что падает за секунды.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: зависимости
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format --check
+        run: ruff format --check .
+
+      - name: правило слоёв
+        run: python -m tools.check_layers
+
+      - name: mypy
+        run: mypy
+
+      - name: тесты с фейковым клиентом
+        run: pytest -q -n 4
+
+      - name: набор на кассетах, журнал без секретов, срок карантина
+        run: python -m docqa.regress --layer replay --report regress/out/replay-report.txt
+
+      - name: отчёт набора
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-report
+          path: regress/out/
+          if-no-files-found: ignore
+          retention-days: 14
