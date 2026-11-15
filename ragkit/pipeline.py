@@ -18,6 +18,7 @@ Pipeline.build_index() — левая колонка, Pipeline.answer() — пр
 """
 
 import hashlib
+import re
 import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
@@ -99,6 +100,39 @@ class WholeDocument:
 
     def chunk(self, docs: Sequence[Doc]) -> list[Chunk]:
         return [Chunk(d.text, d.name, {"version": d.version}) for d in docs]
+
+
+@dataclass(frozen=True)
+class Paragraphs:
+    """Абзацы подряд, пока чанк не длиннее max_chars; абзац длиннее — отдельным чанком, целиком.
+
+    Простейшая нарезка для Ф5-02 (векторам нужны куски меньше документа); выбор нарезки — Ф5-06.
+    В metadata — версия документа и диапазон символов [start, end) в его тексте: по нему золотой
+    диапазон ответа находит свой чанк.
+    """
+
+    max_chars: int = 500
+
+    def chunk(self, docs: Sequence[Doc]) -> list[Chunk]:
+        out: list[Chunk] = []
+        for d in docs:
+            spans = [
+                (m.start(), m.end()) for m in re.finditer(r"\S.*?(?=\n\s*\n|\s*\Z)", d.text, re.S)
+            ]
+            group: list[tuple[int, int]] = []
+            for span in spans:
+                if group and span[1] - group[0][0] > self.max_chars:
+                    out.append(self._make(d, group))
+                    group = []
+                group.append(span)
+            if group:
+                out.append(self._make(d, group))
+        return out
+
+    @staticmethod
+    def _make(d: Doc, group: Sequence[tuple[int, int]]) -> Chunk:
+        start, end = group[0][0], group[-1][1]
+        return Chunk(d.text[start:end], d.name, {"version": d.version, "start": start, "end": end})
 
 
 @dataclass

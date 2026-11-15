@@ -34,3 +34,4 @@ htmlcov/
 
 # Ф5-01: рабочие файлы прогонов
 /week-05/out/
+/week-05/data/embed_cache.jsonl

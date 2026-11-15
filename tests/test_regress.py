@@ -398,3 +398,12 @@ def test_paired_calls_a_large_consistent_difference() -> None:
     verdict = paired(a, b)
     assert verdict.only_b == 28 and verdict.only_a == 0
     assert verdict.distinguishable and "B лучше на 70 п. п." in verdict.text()
+
+
+def test_paired_floor_comes_from_the_weaker_metric() -> None:
+    """Ф5-02: у 0/13 граница Уилсона снизу нулевая; порог берётся у худшей из двух метрик."""
+    from ragkit.regress import paired
+
+    verdict = paired([False] * 13, [True] * 12 + [False])
+    assert verdict.floor > 0.15
+    assert verdict.distinguishable

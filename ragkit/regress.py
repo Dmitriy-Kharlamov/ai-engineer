@@ -135,7 +135,8 @@ def probe_fingerprint(
     base = host or ollama_host()
     version = httpx.get(f"{base}/api/version", timeout=10).json().get("version", "?")
     tags = httpx.get(f"{base}/api/tags", timeout=10).json().get("models", [])
-    digest = next((m.get("digest", "?") for m in tags if m.get("name") == model), "нет модели")
+    names = {model, f"{model}:latest"}  # «bge-m3» ollama хранит как «bge-m3:latest»
+    digest = next((m.get("digest", "?") for m in tags if m.get("name") in names), "нет модели")
     return Fingerprint(
         model, digest, version, dict(options), rubric, f"{platform.system()}-{platform.machine()}"
     )
@@ -833,7 +834,7 @@ class PairedVerdict:
 
 def paired(a: Sequence[bool], b: Sequence[bool], judge_floor: float = 0.0) -> PairedVerdict:
     """Тот же пункт в варианте A и в варианте B. Разница ниже max(предел чувствительности
-    метрики A, ошибка судьи) или с p ≥ 0,05 — «не различимо», а не «B лучше» (Ф5.5-02)."""
+    худшей из двух метрик, ошибка судьи) или с p ≥ 0,05 — «не различимо», а не «B лучше»."""
     if len(a) != len(b):
         raise ValueError("попунктное сравнение: списки разной длины")
     n = len(a)
@@ -848,6 +849,8 @@ def paired(a: Sequence[bool], b: Sequence[bool], judge_floor: float = 0.0) -> Pa
             1.0, 2 * sum(math.comb(discordant, i) for i in range(k + 1)) / float(2**discordant)
         )
     )
-    k_a = sum(a)
-    sensitivity = k_a / n - wilson(k_a, n)[0] if n else 1.0
-    return PairedVerdict(n, k_a, sum(b), only_a, only_b, p, max(sensitivity, judge_floor))
+    k_a, k_b = sum(a), sum(b)
+    # предел чувствительности — худшей из двух метрик (Ф5-02): у 0/13 своя граница Уилсона
+    # нулевая, и порог по одной A печатал бы «0 п. п.» рядом с разницей в 70
+    sensitivity = max(k / n - wilson(k, n)[0] for k in (k_a, k_b)) if n else 1.0
+    return PairedVerdict(n, k_a, k_b, only_a, only_b, p, max(sensitivity, judge_floor))

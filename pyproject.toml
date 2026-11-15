@@ -17,6 +17,7 @@ dependencies = [
     "bcrypt>=4.2",
     "httpx>=0.28",  # services/http_retry.py: клиент к чужим API (Ф3-10)
     "ollama>=0.6.3",  # docqa (Ф4-08): CLI работает с локальной моделью — нужен и без dev
+    "numpy>=2.0",  # ragkit/embedding.py (Ф5-02): векторы и поиск умножением матриц
 ]
 
 [project.scripts]
