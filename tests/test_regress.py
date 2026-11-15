@@ -378,3 +378,23 @@ def test_estimate_check_skips_scripted_answers_and_requests_before_a_fact() -> N
         resp(2, 2, 1200, 0.9),  # после факта, завышено — проверка должна это увидеть
     ]
     assert later_requests_error(events) == [0.2, 0.9]
+
+
+def test_paired_refuses_to_call_a_small_difference() -> None:
+    from ragkit.regress import paired
+
+    a = [True] * 17 + [False] * 3
+    b = [True] * 18 + [False] * 2
+    verdict = paired(a, b, judge_floor=0.13)
+    assert verdict.diff == pytest.approx(0.05) and not verdict.distinguishable
+    assert "не различимо" in verdict.text()
+
+
+def test_paired_calls_a_large_consistent_difference() -> None:
+    from ragkit.regress import paired
+
+    a = [True] * 10 + [False] * 30
+    b = [True] * 38 + [False] * 2
+    verdict = paired(a, b)
+    assert verdict.only_b == 28 and verdict.only_a == 0
+    assert verdict.distinguishable and "B лучше на 70 п. п." in verdict.text()

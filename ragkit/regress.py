@@ -795,3 +795,59 @@ class RunBudget:
 def summarize(values: Iterable[int], n: int) -> str:
     vals = list(values)
     return f"{min(vals)}–{max(vals)} из {n}" if vals else "—"
+
+
+# ---------------------------------------------------------------------------
+# Попунктное сравнение двух вариантов (правило фазы 5, из Ф5.5)
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class PairedVerdict:
+    n: int
+    k_a: int
+    k_b: int
+    only_a: int  # A верно, B нет
+    only_b: int  # B верно, A нет
+    p_value: float  # точный тест Макнемара по несовпавшим парам, двусторонний
+    floor: float  # порог различимости: max(предел чувствительности, ошибка измерителя)
+
+    @property
+    def diff(self) -> float:
+        return (self.k_b - self.k_a) / self.n if self.n else 0.0
+
+    @property
+    def distinguishable(self) -> bool:
+        return abs(self.diff) >= self.floor and self.p_value < 0.05
+
+    def text(self, a: str = "A", b: str = "B") -> str:
+        head = (
+            f"{a} {self.k_a}/{self.n}, {b} {self.k_b}/{self.n}; "
+            f"разница {self.diff * 100:+.0f} п. п.; "
+            f"несовпавших пар {self.only_a + self.only_b} ({a} лучше в {self.only_a}, {b} — в "
+            f"{self.only_b}), Макнемар p = {self.p_value:.3f}; порог {self.floor * 100:.0f} п. п."
+        )
+        if not self.distinguishable:
+            return head + " → не различимо"
+        better = b if self.diff > 0 else a
+        return head + f" → {better} лучше на {abs(self.diff) * 100:.0f} п. п."
+
+
+def paired(a: Sequence[bool], b: Sequence[bool], judge_floor: float = 0.0) -> PairedVerdict:
+    """Тот же пункт в варианте A и в варианте B. Разница ниже max(предел чувствительности
+    метрики A, ошибка судьи) или с p ≥ 0,05 — «не различимо», а не «B лучше» (Ф5.5-02)."""
+    if len(a) != len(b):
+        raise ValueError("попунктное сравнение: списки разной длины")
+    n = len(a)
+    only_a = sum(x and not y for x, y in zip(a, b, strict=True))
+    only_b = sum(y and not x for x, y in zip(a, b, strict=True))
+    discordant = only_a + only_b
+    k = min(only_a, only_b)
+    p = (
+        1.0
+        if discordant == 0
+        else min(
+            1.0, 2 * sum(math.comb(discordant, i) for i in range(k + 1)) / float(2**discordant)
+        )
+    )
+    k_a = sum(a)
+    sensitivity = k_a / n - wilson(k_a, n)[0] if n else 1.0
+    return PairedVerdict(n, k_a, sum(b), only_a, only_b, p, max(sensitivity, judge_floor))
