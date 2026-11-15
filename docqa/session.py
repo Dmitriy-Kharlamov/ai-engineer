@@ -305,7 +305,17 @@ class TurnReport:
             name = str(
                 (r.arguments or {}).get("name") or (r.requested_arguments or {}).get("name") or ""
             )
-            if r.tool_name == "read_document" and r.kind == "failed" and name and name not in names:
+            # «такого документа нет» (PublicToolError) — не падение чтения, а неверное имя:
+            # подстраховка по нему нужна. Ф5-01, q14: модель спросила organisation_meetings.md,
+            # отказ попал сюда, подстраховка не включилась, и ответ ушёл без документа.
+            public = r.detail.startswith("PublicToolError")
+            if (
+                r.tool_name == "read_document"
+                and r.kind == "failed"
+                and not public
+                and name
+                and name not in names
+            ):
                 names.append(name)
         return names
 

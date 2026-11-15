@@ -486,3 +486,20 @@ async def test_scripted_responses_do_not_fake_the_fact() -> None:
     with pytest.raises(BudgetExceededError, match="обращение 2"):
         await s.ask("Расскажи всё")
     assert inner.sent == [] and s.spent_usd == 0.0  # ничего не ушло и ничего не стоило
+
+
+def test_wrong_document_name_is_not_a_failed_read() -> None:
+    """Ф5-01, q14: «такого документа нет» не выключает подстраховку, а падение чтения — да."""
+    from docqa.session import Iteration, TurnReport
+    from ragkit.tools import ToolResult
+
+    def report(detail: str) -> TurnReport:
+        result = ToolResult("failed", "read_document", "read_document", "ошибка: …",
+                            {"name": "organisation_meetings.md"}, detail=detail)  # fmt: skip
+        r = TurnReport("")
+        r.iterations.append(Iteration(1, 1, 2, 500, "оценка", 0.0, 498, 20, 1.0, 1.0, (result,)))
+        return r
+
+    assert report("PublicToolError: такого документа нет. Доступны: a.md").read_failed == []
+    crashed = report("PermissionError: [Errno 13] Permission denied: a.md")
+    assert crashed.read_failed == ["organisation_meetings.md"]
